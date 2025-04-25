@@ -10,7 +10,7 @@ Page {
 	id: root
 
 	required property string bindPrefix
-	readonly property bool isMulti: numberOfAcInputs.valid && numberOfAcInputs.value > 0
+	readonly property bool isMulti: numberOfAcInputs.valid && numberOfAcInputs.value > 0 && productId.value !== ProductInfo.ProductId_VeBus_MicroPlus
 	readonly property bool chargeInProcess: preferRenewableEnergy.value === 0
 
 	title: veBusDevice.name
@@ -64,6 +64,11 @@ Page {
 	VeQuickItem {
 		id: firmwareVersion
 		uid: root.bindPrefix + "/FirmwareVersion"
+	}
+
+	VeQuickItem {
+		id: productId
+		uid: root.bindPrefix + "/ProductId"
 	}
 
 	GradientListView {
@@ -240,6 +245,7 @@ Page {
 			ListNavigation {
 				//% "Advanced"
 				text: qsTrId("vebus_device_page_advanced")
+				preferredVisible: productId.value !== ProductInfo.ProductId_VeBus_MicroPlus
 				onClicked: Global.pageManager.pushPage("/pages/vebusdevice/PageVeBusAdvanced.qml",
 													   { "bindPrefix": root.bindPrefix,
 														   "title": text
@@ -247,7 +253,17 @@ Page {
 			}
 
 			ListNavigation {
+				text: CommonWords.setup
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus
+				onClicked: Global.pageManager.pushPage("/pages/vebusdevice/PageVeBusSettingsHm.qml",
+													   { "bindPrefix": root.bindPrefix,
+														   "title": text
+													   })
+			}
+
+			ListNavigation {
 				text: CommonWords.alarm_status
+				preferredVisible: productId.value !== ProductInfo.ProductId_VeBus_MicroPlus
 				onClicked: Global.pageManager.pushPage("/pages/vebusdevice/PageVeBusAlarms.qml",
 													   {
 														   "bindPrefix": root.bindPrefix,
@@ -257,6 +273,7 @@ Page {
 
 			ListNavigation {
 				text: CommonWords.alarm_setup
+				preferredVisible: productId.value !== ProductInfo.ProductId_VeBus_MicroPlus
 				onClicked: Global.pageManager.pushPage("/pages/vebusdevice/PageVeBusAlarmSettings.qml",
 													   {
 														   "title": text,

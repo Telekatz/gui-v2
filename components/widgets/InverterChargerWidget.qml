@@ -72,8 +72,121 @@ OverviewWidget {
 			SystemReason {
 				id: systemReason
 			}
+		},
+		
+		QuantityLabel {
+			id: inverterPowerLabel
+
+			anchors {
+				bottom: debug0label.top
+				left: parent.left
+				leftMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+			}
+			value: inverterPower.value
+			unit: VenusOS.Units_Watt
+			font.pixelSize: root.size === VenusOS.OverviewWidget_Size_XS
+					  ? Theme.font_overviewPage_widget_quantityLabel_minimumSize
+					  : Theme.font_overviewPage_widget_quantityLabel_maximumSize
+			alignment: Qt.AlignLeft
+
+		},
+
+		Label {
+			id: debug0label
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				bottom: debug1label.top
+				bottomMargin: 0
+			}
+			text: debug0.value
+			color: Theme.color_font_secondary
+			horizontalAlignment: Text.AlignLeft
+			visible: debug0.valid
+		},
+
+		Label {
+			id: debug1label
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				bottom: parent.bottom
+				bottomMargin: Theme.geometry_overviewPage_widget_content_verticalMargin
+			}
+			text: debug1.value
+			color: Theme.color_font_secondary
+			horizontalAlignment: Text.AlignLaft
+			visible: debug1.valid
+		},
+
+		Label {
+			id: debug2label
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				bottom: debug3label.top
+				bottomMargin: 0
+			}
+			text: debug2.value
+			color: Theme.color_font_secondary
+			horizontalAlignment: Text.AlignRight
+			visible: debug2.valid
+		},
+
+		Label {
+			id: debug3label
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
+				bottom: parent.bottom
+				bottomMargin: Theme.geometry_overviewPage_widget_content_verticalMargin
+			}
+			text: debug3.value
+			color: Theme.color_font_secondary
+			horizontalAlignment: Text.AlignRight
+			visible: debug3.valid
 		}
+
 	]
+
+	VeQuickItem {
+		id: inverterPower
+		uid: Global.inverterChargers.firstObject.serviceUid + "/Ac/Power"
+	}
+	
+	VeQuickItem {
+		id: debug0
+		uid: Global.inverterChargers.firstObject.serviceUid + "/Debug/Debug0"
+	}
+
+	VeQuickItem {
+		id: debug1
+		uid: Global.inverterChargers.firstObject.serviceUid + "/Debug/Debug1"
+	}
+
+	VeQuickItem {
+		id: debug2
+		uid: Global.inverterChargers.firstObject.serviceUid + "/Debug/Debug2"
+	}
+
+	VeQuickItem {
+		id: debug3
+		uid: Global.inverterChargers.firstObject.serviceUid + "/Debug/Debug3"
+	}
 
 	Loader {
 		id: sideGaugeLoader

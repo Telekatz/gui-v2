@@ -1,0 +1,68 @@
+/*
+** Copyright (C) 2025 Telekatz
+** This code is based on Victron Energy code
+** See LICENSE.txt for license information.
+*/
+
+import QtQuick
+import Victron.VenusOS
+
+ListItemButton {
+	id: root
+
+	readonly property alias dataItem: dataItem
+	property alias value: rangeModel.value
+	property string suffix
+	property string title
+	property int decimals
+	property real from: !isNaN(dataItem.min) ? dataItem.min : 0
+	property real to: !isNaN(dataItem.max) ? dataItem.max : Global.int32Max / Math.pow(10, decimals) // qml int is a signed 32 bit value
+	property real stepSize: 1
+	property var presets: []
+
+	property var _numberSelector
+
+	signal maxValueReached()
+	signal minValueReached()
+	signal selectorAccepted(newValue: var)
+
+	text: value === undefined ? "--" : Units.formatNumber(value, decimals) + root.suffix
+
+	onClicked: Global.dialogLayer.open(numberSelectorComponent, {value: value})
+	
+	RangeModel {
+		id: rangeModel
+		minimumValue: root.from
+		maximumValue: root.to
+		value: dataItem.valid ? dataItem.value : 0
+	}
+
+	Component {
+		id: numberSelectorComponent
+
+		NumberSelectorDialog {
+			title: root.title
+			suffix: root.suffix
+			decimals: root.decimals
+			from: root.from
+			to: root.to
+			stepSize: root.stepSize
+			presets: root.presets
+
+			onAccepted: {
+				if (dataItem.uid.length > 0) {
+					dataItem.setValue(value)
+				} else {
+					root.value = value
+				}
+				root.selectorAccepted(value)
+			}
+			onMinValueReached: root.minValueReached()
+			onMaxValueReached: root.maxValueReached()
+		}
+	}
+
+	VeQuickItem {
+		id: dataItem
+	}
+}

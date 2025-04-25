@@ -58,6 +58,9 @@ public:
 		ProductId_PvInverter_Fronius = 0xA142, // VE_PROD_ID_PV_INVERTER_FRONIUS
 		ProductId_TankSensor_Generic = 0xA160,
 		ProductId_MeteoSensor_Imt = 0xB030, // VE_PROD_ID_IMT_SI_RS485_SOLAR_IRRADIANCE_SENSOR
+		ProductId_VeBus_MicroPlus = 0xfff1,
+		ProductId_EnergyMeter_Eastron = 0xb023,
+		ProductId_EnergyMeter_Shelly = 0xFFE0,
 	};
 	Q_ENUM(ProductId_Misc)
 

@@ -16,6 +16,7 @@ RangeSlider {
 	implicitWidth: parent ? parent.width : 0
 	implicitHeight: Theme.geometry_listItem_height
 	stepSize: (to-from) / Theme.geometry_listItem_slider_stepDivsion
+	snapMode: RangeSlider.SnapAlways
 
 	leftPadding: Theme.geometry_listItem_content_horizontalMargin
 		+ labelWidth

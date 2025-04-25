@@ -43,6 +43,12 @@ VisibleItemModel {
 		bindPrefix: root.bindPrefix
 	}
 
+	ListSwitch {
+		text: qsTrId("common_words_ac_output")
+		preferredVisible: dataItem.valid
+		dataItem.uid: root.bindPrefix + "/SwitchableOutput/0/State"
+	}
+
 	SettingsColumn {
 		width: parent ? parent.width : 0
 		preferredVisible: root.phaseNumbers.length > 0

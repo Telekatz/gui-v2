@@ -290,6 +290,7 @@ set (VENUS_QML_MODULE_SOURCES
     components/controls/DimmingSlider.qml
     components/controls/Label.qml
     components/controls/ListItemButton.qml
+    components/controls/ListItemSpinBox.qml
     components/controls/ListPressArea.qml
     components/controls/PressArea.qml
     components/controls/PressEffect.qml
@@ -636,6 +637,8 @@ set (VENUS_QML_MODULE_SOURCES
     pages/settings/devicelist/ac-in/PageSmappeeCTList.qml
     pages/settings/devicelist/ac-in/PageSmappeeCTSetup.qml
     pages/settings/devicelist/ac-in/PageSmappeeDeviceList.qml
+    pages/settings/devicelist/ac-in/PageShellySetup.qml
+    pages/settings/devicelist/ac-in/PageHmConnectionSetup.qml
     pages/settings/devicelist/pulsemeter/PagePulseCounter.qml
     pages/settings/devicelist/pulsemeter/PagePulseCounterSetup.qml
     pages/settings/devicelist/temperature/PageTemperatureSensor.qml
@@ -661,6 +664,8 @@ set (VENUS_QML_MODULE_SOURCES
     pages/vebusdevice/PageAcSensor.qml
     pages/vebusdevice/PageAcSensors.qml
     pages/vebusdevice/PageVeBusAdvanced.qml
+    pages/vebusdevice/PageVeBusSettingsHm.qml
+    pages/vebusdevice/PageVeBusSettingsHmAdvanced.qml
     pages/vebusdevice/PageVeBusAlarms.qml
     pages/vebusdevice/PageVeBusAlarmSettings.qml
     pages/vebusdevice/PageVeBusBms.qml

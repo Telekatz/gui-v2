@@ -70,6 +70,16 @@ Page {
 		}
 	}
 
+	VeQuickItem {
+		id: serial
+		uid: root.bindPrefix + "/Serial"
+	}
+	
+	VeQuickItem {
+		id: instance
+		uid: root.bindPrefix + "/DeviceInstance"
+	}
+
 	GradientListView {
 		id: settingsListView
 
@@ -165,6 +175,137 @@ Page {
 							{ "bindPrefix": root.bindPrefix })
 				}
 			}
+
+			/* Hoymiles settings */
+
+			ListSwitchForced {
+				id: enabled
+				text: CommonWords.enabled
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus && dataItem.valid
+				dataItem.uid: root.bindPrefix + "/Enabled"
+			}
+
+			ListRadioButtonGroup {
+				id: microEssPhase
+				text: CommonWords.phase
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Devices/mInv_" + serial.value + "/Phase"
+
+				optionModel: [
+					{ display: "L1", value: 1 },
+					{ display: "L2", value: 2 },
+					{ display: "L3", value: 3 }
+				]
+			}
+
+			ListSpinBox {
+				id: maxInverterPower
+				text: qsTrId("settings_ess_max_inverter_power")
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Devices/mInv_" + serial.value + "/MaxPower"
+				suffix: Units.defaultUnitString(VenusOS.Units_Watt)
+				decimals: 0
+				stepSize: 50
+				to: 2000
+				from: 50
+			}
+						
+			ListSwitch {
+				id: autoRestart
+				//% "Restart inverter at midnight"
+				text: qsTrId("hm_restart_inverter")
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus && restart.valid
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Devices/mInv_" + serial.value + "/AutoRestart"
+
+				VeQuickItem {
+					id: restart
+					uid: root.bindPrefix + "/Restart"
+				}
+			}
+
+			ListSwitch {
+				id: powerCalibration
+				//% "Use AC calibration"
+				text: qsTrId("hm_use_AC_calibration")
+				preferredVisible: dataItem.valid && powerCalibrationValues.value != ""
+				dataItem.uid: root.bindPrefix + "/Ac/Calibration"
+
+				VeQuickItem {
+					id: powerCalibrationValues
+					uid: root.bindPrefix + "/Ac/CalibrationValues"
+				}
+
+			}
+
+			ListNavigation {
+				//% "Connection settings"
+				text: qsTrId("hm_connection_settings")
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus
+				onClicked: {
+					Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageHmConnectionSetup.qml",
+							{ "bindPrefix": root.bindPrefix,
+							  "title": text, })
+				}
+			}
+
+			/* Eastron settings */
+
+			ListRadioButtonGroup {
+				id: eastronPhase
+				text: CommonWords.phase
+				preferredVisible: dataItem.valid && productId.value == ProductInfo.ProductId_EnergyMeter_Eastron
+				dataItem.uid: root.bindPrefix + "/Phase"
+				optionModel: [
+					{ display: "L1", value: 0 },
+					{ display: "L2", value: 1 },
+					{ display: "L3", value: 2 }
+				]
+			}
+
+			ListSpinBox {
+				id: eastronRefreshRate
+				//% "Refresh rate"
+				text: qsTrId("eastron_refresh_rate")
+				preferredVisible: dataItem.valid && productId.value == ProductInfo.ProductId_EnergyMeter_Eastron
+				dataItem.uid: root.bindPrefix + "/RefreshRate"
+				suffix: "Hz"
+				decimals: 0
+				stepSize: 1
+				from: 1
+				to: 10
+				
+			}
+
+			ListRadioButtonGroup {
+				id: eastronEnergyCounter
+				//% "Energy counter source"
+				text: qsTrId("eastron_energy_counter_source")
+				preferredVisible: dataItem.valid && productId.value == ProductInfo.ProductId_EnergyMeter_Eastron
+				dataItem.uid: root.bindPrefix + "/EnergyCounter"
+				optionModel: [
+					//% "Device value"
+					{ display: qsTrId("eastron_device_value"), value: 0 },
+					//% "Balancing"
+					{ display: qsTrId("eastron_balancing"), value: 1 },
+					//% "Import - Export"
+					{ display: qsTrId("eastron_import_export"), value: 2 }
+				]
+			}
+
+			/* Shelly settings */
+
+			ListNavigation {
+				//% "Shelly settings"
+				text: qsTrId("shelly_settings")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				onClicked: {
+					Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageShellySetup.qml",
+							{ "bindPrefix": root.bindPrefix,
+							  "title": text, })
+				}
+			}
+
+
 		}
 	}
 }

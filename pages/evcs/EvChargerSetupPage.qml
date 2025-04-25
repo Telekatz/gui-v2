@@ -12,8 +12,59 @@ Page {
 
 	required property string bindPrefix
 
+	function updateServiceName(role) {
+		var s = bindPrefix.split('.');
+
+		if (s[2] === role)
+			return;
+
+		s[2] = role;
+		bindPrefix = s.join('.');
+	}
+
+	VeQuickItem {
+		id: allowedRoles
+
+		uid: root.bindPrefix + "/AllowedRoles"
+		onValueChanged: {
+			const roles = value
+			role.optionModel = roles ? roles.map(function(v) {
+				// heatpump feature is not properly supported yet. So, hide it unless it is the
+				// currently selected option.
+				return { "display": Global.acInputs.roleName(v), "value": v, "readOnly": v === "heatpump" }
+			}) : []
+		}
+	}
+
+	VeQuickItem {
+		id: productId
+		uid: root.bindPrefix + "/ProductId"
+	}
+
+	VeQuickItem {
+		id: instance
+		uid: root.bindPrefix + "/DeviceInstance"
+	}
+
 	GradientListView {
 		model: VisibleItemModel {
+			
+			ListRadioButtonGroup {
+				id: role
+
+				text: CommonWords.ac_input_role
+				dataItem.uid: root.bindPrefix + "/Role"
+				popDestination: null
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				onOptionClicked: function(index) {
+					// Changing the role invalidates this whole page, so close the radio buttons
+					// page before updating the role.
+					secondaryText = optionModel[index].display
+					Global.pageManager.popPage()
+					root.updateServiceName(optionModel[index].value)
+				}
+			}
+
 			ListEvChargerPositionRadioButtonGroup {
 				dataItem.uid: root.bindPrefix + "/Position"
 			}
@@ -31,6 +82,48 @@ Page {
 				invertSourceValue: true
 				preferredVisible: dataItem.valid
 			}
+
+			/* Shelly settings */
+
+			ListSpinBox {
+				id: shellyEvChargeThreshold
+				//% "Charging threshold"
+				text:  qsTrId("shelly_EV_charging_threshold")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvChargeThreshold"
+				suffix: Units.defaultUnitString(VenusOS.Units_Watt)
+				decimals: 0
+				stepSize: 1
+				from: 1
+				to: 100
+				
+			}
+
+			ListSpinBox {
+				id: shellyEvDisconnectThreshold
+				//% "Disconnect threshold"
+				text:  qsTrId("shelly_EV_disconnect_threshold")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvDisconnectThreshold"
+				suffix: Units.defaultUnitString(VenusOS.Units_Watt)
+				decimals: 1
+				stepSize: 0.1
+				from: 0
+				to: 10
+				
+			}
+
+			ListNavigation {
+				//% "Shelly settings"
+				text: qsTrId("shelly_settings")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				onClicked: {
+					Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageShellySetup.qml",
+							{ "bindPrefix": root.bindPrefix,
+							  "title": text, })
+				}
+			}
+
 		}
 	}
 }

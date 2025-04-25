@@ -3,6 +3,177 @@
 <TS version="2.1" language="de">
   <context>
     <name/>
+
+    <message id="shelly_settings">
+      <location filename="..." line="0"/>
+      <source>Shelly settings</source>
+      <translation>Shelly Einstellungen</translation>
+    </message>
+    <message id="shelly_meter_index">
+      <location filename="..." line="0"/>
+      <source>Meter index</source>
+      <translation>Zählerindex</translation>
+    </message>
+    <message id="shelly_show_temperature">
+      <location filename="..." line="0"/>
+      <source>Show temperature</source>
+      <translation>Temperatur anzeigen</translation>
+    </message>
+    <message id="shelly_EV_charging_threshold">
+      <location filename="..." line="0"/>
+      <source>Charging threshold</source>
+      <translation>Schwellenwert laden</translation>
+    </message>
+    <message id="shelly_EV_disconnect_threshold">
+      <location filename="..." line="0"/>
+      <source>Disconnect threshold</source>
+      <translation>Schwellenwert getrennt</translation>
+    </message>
+    <message id="shelly_reverse_flow">
+      <location filename="..." line="0"/>
+      <source>Reverse flow</source>
+      <translation>Energiefluss umkehren</translation>
+    </message>
+    <message id="shelly_polling_interval">
+      <location filename="..." line="0"/>
+      <source>Polling interval</source>
+      <translation>Abfrageintervall</translation>
+    </message>
+
+    <message id="eastron_refresh_rate">
+      <location filename="..." line="0"/>
+      <source>Refresh rate</source>
+      <translation>Aktualisierungsrate</translation>
+    </message>
+    <message id="eastron_energy_counter_source">
+      <location filename="..." line="0"/>
+      <source>Energy counter source</source>
+      <translation>Energiezählerquelle</translation>
+    </message>
+    <message id="eastron_device_value">
+      <location filename="..." line="0"/>
+      <source>Device value</source>
+      <translation>Gerätewert</translation>
+    </message>
+    <message id="eastron_balancing">
+      <location filename="..." line="0"/>
+      <source>Balancing</source>
+      <translation>Saldierend</translation>
+    </message>
+    <message id="eastron_import_export">
+      <location filename="..." line="0"/>
+      <source>Import - Export</source>
+      <translation>Import - Export</translation>
+    </message>
+    
+    <message id="hm_connection_settings">
+      <location filename="..." line="0"/>
+      <source>Connection settings</source>
+      <translation>Verbindungseinstellungen</translation>
+    </message>
+    <message id="hm_use_AC_calibration">
+      <location filename="..." line="0"/>
+      <source>Use AC calibration</source>
+      <translation>AC-Kalibrierung verwenden</translation>
+    </message>
+    <message id="hm_restart_inverter">
+      <location filename="..." line="0"/>
+      <source>Restart inverter at midnight</source>
+      <translation>Wechselrichter um Mitternacht neu starten</translation>
+    </message>
+    <message id="hm_inverter_path">
+      <location filename="..." line="0"/>
+      <source>Inverter path</source>
+      <translation>Inverterpfad</translation>
+    </message>
+    
+     <message id="microPlus_startup_limit">
+      <location filename="..." line="0"/>
+      <source>Startup limit</source>
+      <translation>Startlimit</translation>
+    </message>
+    <message id="microPlus_startup_limit_min_max">
+      <location filename="..." line="0"/>
+      <source>Startup limit min/max</source>
+      <translation>Startlimit min/max</translation>
+    </message>
+    <message id="microPlus_feedin_limit_mode">
+      <location filename="..." line="0"/>
+      <source>Feed-In limit mode</source>
+      <translation>Modus Einspeisebegrenzung</translation>
+    </message>
+    <message id="microPlus_base_load">
+      <location filename="..." line="0"/>
+      <source>Base load</source>
+      <translation>Grundlast</translation>
+    </message>
+    <message id="microPlus_grid_setpoint_fast">
+      <location filename="..." line="0"/>
+      <source>Deviation grid setpoint fast</source>
+      <translation>Regelabweichung / Intervall schnell</translation>
+    </message>
+    <message id="microPlus_deviation_grid_setpoint_fast">
+      <location filename="..." line="0"/>
+      <source>Deviation / interval fast</source>
+      <translation>Regelabweichung Sollwert Netz schnell</translation>
+    </message>
+    <message id="microPlus_interval_grid_setpoint_fast">
+      <location filename="..." line="0"/>
+      <source>Control interval fast</source>
+      <translation>Regelintervall schnell</translation>
+    </message>
+    <message id="microPlus_grid_setpoint_slow">
+      <location filename="..." line="0"/>
+      <source>Deviation / interval slow</source>
+      <translation>Regelabweichung / Intervall langsam</translation>
+    </message>
+    <message id="microPlus_deviation_grid_setpoint_slow">
+      <location filename="..." line="0"/>
+      <source>Deviation grid setpoint slow</source>
+      <translation>Regelabweichung Sollwert Netz langsam</translation>
+    </message>
+    <message id="microPlus_interval_grid_setpoint_slow">
+      <location filename="..." line="0"/>
+      <source>Control interval slow</source>
+      <translation>Regelintervall langsam</translation>
+    </message>
+    <message id="microPlus_interval_max">
+      <location filename="..." line="0"/>
+      <source>Interval max</source>
+      <translation>Regelintervall maximum</translation>
+    </message>
+    <message id="microPlus_base_load_period">
+      <location filename="..." line="0"/>
+      <source>Base load period</source>
+      <translation>Grundlastzeit</translation>
+    </message>
+    <message id="microPlus_inverter_minimum_interval">
+      <location filename="..." line="0"/>
+      <source>Inverter minimum interval</source>
+      <translation>Wechselrichter Mindestintervall</translation>
+    </message>
+    <message id="microPlus_energy_meter">
+      <location filename="..." line="0"/>
+      <source>Energy meter</source>
+      <translation>Energiezähler</translation>
+    </message>
+    <message id="microPlus_internal">
+      <location filename="..." line="0"/>
+      <source>Internal</source>
+      <translation>Intern</translation>
+    </message>
+    <message id="microPlus_inverter_DC_shutdown_voltage">
+      <location filename="..." line="0"/>
+      <source>Inverter DC shutdown voltage</source>
+      <translation>DC-Abschaltspannung des Wechselrichters</translation>
+    </message>
+    <message id="microPlus_inverter_DC_restart_voltage">
+      <location filename="..." line="0"/>
+      <source>Inverter DC restart voltage</source>
+      <translation>DC-Wiedereinschaltspannung des Wechselrichters</translation>
+    </message>
+
+
     <message id="settings_tailscale_disabled">
       <location filename="../../pages/settings/PageSettingsTailscale.qml" line="118"/>
       <source>Disabled</source>
