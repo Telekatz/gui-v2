@@ -100,13 +100,6 @@ QtObject {
 		Component.onCompleted: setValue(20.4455)
 	}
 
-	//--- DC data ---
-
-	readonly property VeQuickItem _maximumDcPower: VeQuickItem {
-		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Dc/System/Power/Max"
-		Component.onCompleted: setValue(600)
-	}
-
 	//--- veBus ---
 
 	readonly property VeQuickItem veBusService: VeQuickItem {

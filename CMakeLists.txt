@@ -232,6 +232,7 @@ set (VENUS_QML_MODULE_SOURCES
     components/Page.qml
     components/PageGensetModel.qml
     components/PageStack.qml
+    components/VeQuickItemsQuotient.qml
     components/ProgressArc.qml
     components/QuantityTableMetrics.qml
     components/QuantityGroupListHeader.qml
@@ -263,13 +264,14 @@ set (VENUS_QML_MODULE_SOURCES
     components/StatusBar.qml
     components/SwipePageModel.qml
     components/SwipeViewPage.qml
+    components/SwitchableOutputDelegate.qml
+    components/SwitchableOutputGroupCard.qml
     components/SystemBatteryDelegate.qml
     components/SystemBatteryDeviceModel.qml
     components/SystemReason.qml
     components/TabBar.qml
     components/TankItem.qml
     components/TankGauge.qml
-    components/TankGaugeGroup.qml
     components/TemperatureRelaySettings.qml
     components/ThreePhaseBarGauge.qml
     components/ThreePhaseDisplay.qml
@@ -340,6 +342,7 @@ set (VENUS_QML_MODULE_SOURCES
     components/listitems/ListLink.qml
     components/listitems/ListMqttAccessSwitch.qml
     components/listitems/ListMountStateButton.qml
+    components/listitems/ListOutputBatterySwitch.qml
     components/listitems/ListPvInverterPositionRadioButtonGroup.qml
     components/listitems/ListEvChargerPositionRadioButtonGroup.qml
     components/listitems/ListRebootButton.qml
@@ -439,6 +442,7 @@ set (VENUS_QML_MODULE_SOURCES
     data/common/SolarHistoryErrorModel.qml
     data/common/SolarTracker.qml
     data/common/SolarTrackerDailyHistory.qml
+    data/common/SwitchableOutput.qml
     data/common/Tank.qml
     data/common/TankDescription.qml
     data/common/TankModel.qml
@@ -450,6 +454,7 @@ set (VENUS_QML_MODULE_SOURCES
     pages/DialogLayer.qml
     pages/EnvironmentTab.qml
     pages/LevelsPage.qml
+    pages/LevelsTab.qml
     pages/MainView.qml
     pages/NotificationLayer.qml
     pages/NotificationsPage.qml
@@ -559,6 +564,8 @@ set (VENUS_QML_MODULE_SOURCES
     pages/settings/devicelist/PageMeteo.qml
     pages/settings/devicelist/PageMeteoSettings.qml
     pages/settings/devicelist/PageMotorDrive.qml
+    pages/settings/devicelist/PageSwitch.qml
+    pages/settings/devicelist/PageSwitchableOutput.qml
     pages/settings/devicelist/PageUnsupportedDevice.qml
     pages/settings/devicelist/battery/BatteryDetails.qml
     pages/settings/devicelist/battery/BatteryHistory.qml
@@ -578,6 +585,7 @@ set (VENUS_QML_MODULE_SOURCES
     pages/settings/devicelist/battery/PageLynxIonDiagnostics.qml
     pages/settings/devicelist/battery/PageLynxIonIo.qml
     pages/settings/devicelist/battery/PageLynxIonSystem.qml
+    pages/settings/devicelist/dc-in/DcHistorySettingsColumn.qml
     pages/settings/devicelist/dc-in/ListCycleHistoryItem.qml
     pages/settings/devicelist/dc-in/PageAlternator.qml
     pages/settings/devicelist/dc-in/PageAlternatorModel.qml
@@ -587,7 +595,7 @@ set (VENUS_QML_MODULE_SOURCES
     pages/settings/devicelist/dc-in/PageDcMeterAlarms.qml
     pages/settings/devicelist/dc-in/PageDcMeterHistory.qml
     pages/settings/devicelist/delegates/AcInDeviceListDelegate.qml
-    pages/settings/devicelist/delegates/DcMeterDeviceListDelegate.qml
+    pages/settings/devicelist/delegates/DcDeviceListDelegate.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_acload.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_acsystem.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_alternator.qml
@@ -612,6 +620,7 @@ set (VENUS_QML_MODULE_SOURCES
     pages/settings/devicelist/delegates/DeviceListDelegate_pulsemeter.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_pvinverter.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_solarcharger.qml
+    pages/settings/devicelist/delegates/DeviceListDelegate_switch.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_tank.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_temperature.qml
     pages/settings/devicelist/delegates/DeviceListDelegate_unsupported.qml
@@ -694,10 +703,18 @@ list(APPEND TRANSLATION_SOURCES ${VENUS_QML_MODULE_SOURCES})
 list(APPEND VenusQMLModule_CPP_SOURCES
     src/aggregatedevicemodel.h
     src/aggregatedevicemodel.cpp
+    src/aggregatetankmodel.h
+    src/aggregatetankmodel.cpp
     src/visibleitemmodel.h
     src/visibleitemmodel.cpp
+    src/basedevice.h
+    src/basedevice.cpp
     src/basedevicemodel.h
     src/basedevicemodel.cpp
+    src/basetankdevice.h
+    src/basetankdevice.cpp
+    src/basetankdevicemodel.h
+    src/basetankdevicemodel.cpp
     src/theme.h
     src/theme.cpp
     src/themeobjects.h
@@ -739,6 +756,8 @@ list(APPEND VenusQMLModule_CPP_SOURCES
     src/screenblanker.cpp
     src/solarinputmodel.h
     src/solarinputmodel.cpp
+    src/switchableoutputgroupmodel.h
+    src/switchableoutputgroupmodel.cpp
     src/widgetconnectorpathupdater.h
     src/widgetconnectorpathupdater.cpp
 )
@@ -875,6 +894,7 @@ set(Mock_QML_MODULE_SOURCES
     data/mock/EssImpl.qml
     data/mock/EvChargersImpl.qml
     data/mock/GeneratorsImpl.qml
+    data/mock/GpsImpl.qml
     data/mock/HeatPumpsImpl.qml
     data/mock/MeteoDevicesImpl.qml
     data/mock/MockDataManager.qml
@@ -889,6 +909,7 @@ set(Mock_QML_MODULE_SOURCES
     data/mock/TanksImpl.qml
     data/mock/UnsupportedDevicesImpl.qml
     data/mock/InverterChargersImpl.qml
+    data/mock/config/BoatPageConfig.qml
     data/mock/config/BriefAndOverviewPageConfig.qml
     data/mock/config/LevelsPageConfig.qml
     data/mock/config/MockDataSimulator.qml
@@ -943,6 +964,61 @@ if (${LOAD_QML_FROM_FILESYSTEM})
     )
 endif()
 # end Gauges_QML_MODULE
+
+# BoatPageComponents_QML_MODULE
+set(BoatPageComponents_QML_MODULE_SOURCES
+    pages/boatpage/BoatPage.qml
+    pages/boatpage/Background.qml
+    pages/boatpage/BatteryArc.qml
+    pages/boatpage/BatteryPercentage.qml
+    pages/boatpage/ConsumptionGauge.qml
+    pages/boatpage/Gear.qml
+    pages/boatpage/Gps.qml
+    pages/boatpage/LargeCenterGauge.qml
+    pages/boatpage/LoadArc.qml
+    pages/boatpage/MotorDrive.qml
+    pages/boatpage/MotorDriveGauges.qml
+    pages/boatpage/QuantityLabelIconRow.qml
+    pages/boatpage/TemperatureGauge.qml
+    pages/boatpage/TemperatureGauges.qml
+    pages/boatpage/TimeToGo.qml
+)
+
+list(APPEND TRANSLATION_SOURCES ${BoatPageComponents_QML_MODULE_SOURCES})
+
+qt_add_qml_module(BoatPageComponents
+    URI Victron.BoatPageComponents
+    STATIC
+    OUTPUT_DIRECTORY Victron/BoatPageComponents
+    QML_FILES ${BoatPageComponents_QML_MODULE_SOURCES}
+    ${QML_MODULE_OPTARGS}
+)
+if (${LOAD_QML_FROM_FILESYSTEM})
+    set(thisModule BoatPageComponents)
+    qt_query_qml_module(${thisModule} QML_FILES module_qml_files QMLDIR module_qmldir)
+    install(FILES ${module_qmldir}    DESTINATION ${CMAKE_INSTALL_BINDIR}/Victron/BoatPageComponents)
+    install(FILES ${module_qml_files} DESTINATION ${CMAKE_INSTALL_BINDIR}/Victron/BoatPageComponents)
+    add_custom_command(
+	TARGET ${thisModule}
+	COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/StripRegexFromFile.cmake" ${module_qmldir} "^prefer.*$"
+	VERBATIM
+    )
+endif()
+
+qt_add_resources(BoatPageComponents "BoatPageComponents_large_resources"
+    BIG_RESOURCES
+    FILES
+        images/boat_glow.png
+	images/icon_battery_40.png
+	images/icon_boat_32.svg
+	images/icon_engine_temp_32.svg
+	images/icon_motorController_32.svg
+	images/icon_propeller_32.png
+	images/icon_propeller.svg
+	images/icon_temp_coolant_32.svg
+)
+
+# end BoatPageComponents_QML_MODULE
 
 # Mqtt_QML_MODULE
 set(Mqtt_QML_MODULE_SOURCES
@@ -1084,7 +1160,6 @@ qt_add_resources(${PROJECT_NAME} "${PROJECT_NAME}_large_resources"
         images/alternator.svg
         images/breadcrumb_lhs.svg
         images/breadcrumb_rhs.svg
-        images/icon_auxpage_on_32.svg
         images/icon_battery_24.svg
         images/icon_battery_charging_24.svg
         images/icon_battery_discharging_24.svg
@@ -1093,6 +1168,8 @@ qt_add_resources(${PROJECT_NAME} "${PROJECT_NAME}_large_resources"
         images/icon_devices_32.png
         images/icon_general_32.png
         images/icon_integration_32.png
+        images/icon_smartswitch_off_32.svg
+        images/icon_smartswitch_on_32.svg
         images/icon_system_32.png
         images/icon_vrm_32.png
         images/brief.svg
@@ -1151,6 +1228,7 @@ qt_add_resources(${PROJECT_NAME} "${PROJECT_NAME}_large_resources"
         images/icon_sidepanel_off_32.svg
         images/icon_sidepanel_on_32.svg
         images/icon_screen_sleep_32.svg
+        images/icon_switch_24.svg
         images/icon_temp_32.svg
         images/information.svg
         images/inverter.svg
@@ -1274,6 +1352,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Xml
     Qt6::Mqtt
     VenusQMLModuleplugin
+    BoatPageComponentsplugin
     VictronGaugesplugin
     VictronDbusplugin
     VictronMockplugin

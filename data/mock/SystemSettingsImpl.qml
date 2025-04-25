@@ -11,6 +11,44 @@ QtObject {
 
 	property SystemReason systemReason: SystemReason {}
 
+	//--- DC data ---
+
+	readonly property VeQuickItem _maximumDcPower: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Dc/System/Power/Max"
+		Component.onCompleted: setValue(1000)
+	}
+
+	readonly property VeQuickItem _hasDcSystem: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/SystemSetup/HasDcSystem"
+		Component.onCompleted: setValue(1)
+	}
+
+	readonly property VeQuickItem _boatPageEnabled: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/Enabled"
+		Component.onCompleted: setValue(true)
+	}
+
+	readonly property VeQuickItem _boatPageCenterGaugeType: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/CenterGauge/Type"
+		Component.onCompleted: setValue(0)
+	}
+
+	readonly property VeQuickItem _speed: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Speed/Max"
+		Component.onCompleted: setValue(50)
+	}
+
+	readonly property VeQuickItem _motordriveRpmMax: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/MotorDrive/RPM/Max"
+		Component.onCompleted: setValue(6000)
+	}
+
+	readonly property VeQuickItem _boatPageMaxPower: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/MotorDrive/Power/Max"
+
+		Component.onCompleted: setValue(20000)
+	}
+
 	function setMockSettingValue(settingId, value) {
 		Global.mockDataSimulator.setMockValue("com.victronenergy.settings/Settings/" + settingId, value)
 	}
@@ -312,8 +350,7 @@ QtObject {
 		// Solar charger
 		setMockSolarChargerValue("/Link/NetworkStatus", 1)
 		setMockSolarChargerValue("/Settings/BmsPresent", 1)
-		setMockSolarChargerValue("/Alarms/LowVoltage", VenusOS.Alarm_Level_Warning)
-		setMockSolarChargerValue("/Alarms/HighVoltage", VenusOS.Alarm_Level_OK)
+		setMockSolarChargerValue("/Alarms/HighTemperature", VenusOS.Alarm_Level_Warning)
 
 		setMockSystemValue("/SystemType", "ESS")
 		setMockSettingValue("DynamicEss/Mode", 1)

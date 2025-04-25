@@ -72,9 +72,11 @@ Page {
 			}
 
 			ListNavigation {
-				//% "Data units"
-				text: qsTrId("pagesettingsgeneral_data_units")
-				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsDisplayUnits.qml", {"title": text})
+				//% "Start page"
+				text: qsTrId("settings_brief_view_start_page")
+				onClicked: {
+					Global.pageManager.pushPage("/pages/settings/PageSettingsDisplayStartPage.qml", {"title": text})
+				}
 			}
 
 			ListNavigation {
@@ -85,6 +87,18 @@ Page {
 				}
 			}
 
+			ListSwitch {
+				//% "Boat page"
+				text: qsTrId("settings_display_boat_page")
+				dataItem.uid: !!Global.systemSettings ? Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/Enabled" : ""
+			}
+
+			ListNavigation {
+				//% "Data units"
+				text: qsTrId("pagesettingsgeneral_data_units")
+				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsDisplayUnits.qml", {"title": text})
+			}
+
 			ListNavigation {
 				//% "Minimum and maximum gauge ranges"
 				text: qsTrId("settings_display_minmax")
@@ -93,18 +107,8 @@ Page {
 				}
 			}
 
-			ListNavigation {
-				//% "Start page"
-				text: qsTrId("settings_brief_view_start_page")
-				onClicked: {
-					Global.pageManager.pushPage("/pages/settings/PageSettingsDisplayStartPage.qml", {"title": text})
-				}
-			}
-
 			ListRadioButtonGroup {
 				id: runningVersion
-
-				property ModalWarningDialog _restartDialog
 
 				text: onScreenGuiv2Possible.value
 				//% "User interface"
@@ -131,12 +135,11 @@ Page {
 					// When the /RunningVersion changes, venus-platform quits the currently-running
 					// app and starts the selected version. Note: on device, user may not see the
 					// dialog at all, depending on how quickly the app exits.
-					if (!_restartDialog) {
-						_restartDialog = restartDialogComponent.createObject(Global.dialogLayer)
+					const dialogParams = {
+						versionName: optionModel[index].display,
+						settingText: runningVersion.text
 					}
-					_restartDialog.versionName = optionModel[index].display
-					_restartDialog.settingText = runningVersion.text
-					_restartDialog.open()
+					Global.dialogLayer.open(restartDialogComponent, dialogParams)
 					dataItem.setValue(optionModel[index].value)
 				}
 

@@ -81,10 +81,16 @@ public:
 		Units_Temperature_Fahrenheit,
 		Units_RevolutionsPerMinute,
 		Units_Speed_MetresPerSecond,
+		Units_Speed_KilometersPerHour,
+		Units_Speed_MilesPerHour,
+		Units_Speed_Knots,
 		Units_Hectopascal,
 		Units_Kilopascal,
 		Units_CardinalDirection,
-		Units_PowerFactor
+		Units_PowerFactor,
+		Units_Time_Day,
+		Units_Time_Hour,
+		Units_Time_Minute
 	};
 	Q_ENUM(Units_Type)
 
@@ -453,13 +459,13 @@ public:
 	};
 	Q_ENUM(Switch_DeviceState)
 
-	enum SwitchableOutput_Function {
-		SwitchableOutput_Function_Momentary = 0,
-		SwitchableOutput_Function_Latching,
-		SwitchableOutput_Function_Dimmable,
-		SwitchableOutput_Function_Slave = 5
+	enum SwitchableOutput_Type {
+		SwitchableOutput_Type_Momentary = 0,
+		SwitchableOutput_Type_Latching,
+		SwitchableOutput_Type_Dimmable,
+		SwitchableOutput_Type_Slave = 5
 	};
-	Q_ENUM(SwitchableOutput_Function)
+	Q_ENUM(SwitchableOutput_Type)
 
 	enum SwitchableOutput_Status {
 		SwitchableOutput_Status_Off,
@@ -795,6 +801,13 @@ public:
 	};
 	Q_ENUM(ModificationChecks_SystemHooksState)
 
+	enum MotorDriveGear {
+		MotorDriveGear_Neutral,
+		MotorDriveGear_Reverse,
+		MotorDriveGear_Forward
+	};
+	Q_ENUM(MotorDriveGear)
+
 	Q_INVOKABLE QString battery_modeToText(Battery_Mode mode) const;
 	Q_INVOKABLE Battery_Mode battery_modeFromPower(qreal power) const;
 	Q_INVOKABLE QString battery_iconFromMode(Battery_Mode mode) const;
@@ -809,7 +822,7 @@ public:
 	Q_INVOKABLE QString solarCharger_stateToText(SolarCharger_State state) const;
 
 	Q_INVOKABLE QString switch_deviceStateToText(Switch_DeviceState value) const;
-	Q_INVOKABLE QString switchableOutput_functionToText(SwitchableOutput_Function value, int channel = -1) const;
+	Q_INVOKABLE QString switchableOutput_typeToText(SwitchableOutput_Type value, const QString &channelId = QString()) const;
 	Q_INVOKABLE QString switchableOutput_statusToText(SwitchableOutput_Status value) const;
 };
 
