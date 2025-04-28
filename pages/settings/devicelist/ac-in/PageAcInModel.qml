@@ -93,7 +93,8 @@ VisibleItemModel {
 		text: qsTrId("ac-in-modeldefault_ac_totals")
 		model: QuantityObjectModel {
 			QuantityObject { object: totalPower; unit: VenusOS.Units_Watt }
-			QuantityObject { object: totalEnergy; unit: VenusOS.Units_Energy_KiloWattHour }
+			QuantityObject { object: totalEnergy; unit: VenusOS.Units_Energy_KiloWattHour; defaultValue: "--" }
+			QuantityObject { object: totalEnergyReverse; unit: VenusOS.Units_Energy_KiloWattHour; defaultValue: "--" }
 		}
 
 		VeQuickItem {
@@ -104,6 +105,11 @@ VisibleItemModel {
 		VeQuickItem {
 			id: totalEnergy
 			uid: root.bindPrefix + "/Ac/Energy/Forward"
+		}
+
+		VeQuickItem {
+			id: totalEnergyReverse
+			uid: root.bindPrefix + "/Ac/Energy/Reverse"
 		}
 	}
 
@@ -118,6 +124,23 @@ VisibleItemModel {
 				//% "Energy L%1"
 				text: qsTrId("ac-in-modeldefault_energy_x").arg(modelData)
 				dataItem.uid: "%1/Ac/L%2/Energy/Forward".arg(root.bindPrefix).arg(modelData)
+				unit: VenusOS.Units_Energy_KiloWattHour
+				preferredVisible: root.phaseCountKnown || dataItem.valid
+			}
+		}
+	}
+
+	SettingsColumn {
+		width: parent ? parent.width : 0
+		preferredVisible: root.phaseNumbers.length > 0
+
+		Repeater {
+			model: root.phaseNumbers
+			delegate: ListQuantity {
+				//: %1 = phase number (1-3)
+				//% "Reversed Energy L%1"
+				text: qsTrId("ac-in-modeldefault_energy_reverse_x").arg(modelData)
+				dataItem.uid: "%1/Ac/L%2/Energy/Reverse".arg(root.bindPrefix).arg(modelData)
 				unit: VenusOS.Units_Energy_KiloWattHour
 				preferredVisible: root.phaseCountKnown || dataItem.valid
 			}
