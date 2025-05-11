@@ -40,6 +40,37 @@
       <translation>Abfrageintervall</translation>
     </message>
 
+    <message id="shellyEvAutoMinSOC">
+      <location filename="..." line="0"/>
+      <source>Auto mode minimum SOC</source>
+      <translation>Auto-Modus Minimaler SOC</translation>
+    </message>
+    <message id="shellyEvAutoMinExcess">
+      <location filename="..." line="0"/>
+      <source>Auto mode start on minimum excess</source>
+      <translation>Auto-Modus Start bei Mindestüberschuss</translation>
+    </message>
+    <message id="shellyEvAutoMpptThrottling">
+      <location filename="..." line="0"/>
+      <source>Auto mode start with MPPT throttling</source>
+      <translation>Auto-Modus Start bei MPPT-Drosselung</translation>
+    </message>
+    <message id="shellyEvAutoGridTimeout">
+      <location filename="..." line="0"/>
+      <source>Auto mode minimum charging time</source>
+      <translation>Auto-Modus minimale Ladezeit</translation>
+    </message>
+    <message id="shellyEvAutoOnTimeout">
+      <location filename="..." line="0"/>
+      <source>Auto mode On timeout</source>
+      <translation>Auto-Modus Zeitüberschreitung Ein</translation>
+    </message>
+    <message id="shellyEvAutoOffTimeout">
+      <location filename="..." line="0"/>
+      <source>Auto mode Off timeout</source>
+      <translation>Auto-Modus Zeitüberschreitung Aus</translation>
+    </message>
+
     <message id="eastron_refresh_rate">
       <location filename="..." line="0"/>
       <source>Refresh rate</source>

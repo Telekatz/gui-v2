@@ -73,6 +73,7 @@ Page {
 				//% "Autostart"
 				text: qsTrId("evcs_autostart")
 				dataItem.uid: root.bindPrefix + "/AutoStart"
+				preferredVisible: dataItem.valid
 			}
 
 			ListSwitch {
@@ -111,6 +112,79 @@ Page {
 				from: 0
 				to: 10
 				
+			}
+
+			ListSpinBox {
+				id: shellyEvAutoMinSOC
+				//% "Auto mode minimum SOC"
+				text:  qsTrId("shelly_EV_auto_min_SOC")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoMinSOC"
+				suffix: "%"
+				decimals: 0
+				stepSize: 1
+				from: 1
+				to: 100
+			}
+
+			ListSpinBox {
+				id: shellyEvAutoMinExcess
+				//% "Auto mode start on minimum excess"
+				text:  qsTrId("shelly_EV_auto_min_excess")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoMinExcess"
+				suffix: Units.defaultUnitString(VenusOS.Units_Watt)
+				decimals: 0
+				stepSize: 10
+				from: 50
+				to: 2000
+			}
+
+			ListSwitch {
+				id: shellyEvAutoMpptThrottling
+				//% "Auto mode start with MPPT throttling"
+				text:  qsTrId("shelly_EV_auto_MPPT_throttling")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoMpptThrottling"
+			}
+
+			ListSpinBox {
+				id: shellyEvAutoMinChargeTime
+				//% "Auto mode minimum charging time"
+				text:  qsTrId("shelly_EV_auto_grid_timeout")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoMinChargeTime"
+				suffix: "min"
+				decimals: 0
+				stepSize: 5
+				from: 0
+				to: 300
+			}
+
+			ListSpinBox {
+				id: shellyEvAutoOnTimeout
+				//% "Auto mode On timeout"
+				text:  qsTrId("shelly_EV_auto_on_timeout")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoOnTimeout"
+				suffix: "min"
+				decimals: 1
+				stepSize: 0.5
+				from: 0.5
+				to: 15
+			}
+
+			ListSpinBox {
+				id: shellyEvAutoOffTimeout
+				//% "Auto mode Off timeout"
+				text:  qsTrId("shelly_EV_auto_off_timeout")
+				preferredVisible: productId.value == ProductInfo.ProductId_EnergyMeter_Shelly
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Shelly/" + instance.value + "/EvAutoOffTimeout"
+				suffix: "min"
+				decimals: 1
+				stepSize: 0.5
+				from: 0.5
+				to: 15
 			}
 
 			ListNavigation {
