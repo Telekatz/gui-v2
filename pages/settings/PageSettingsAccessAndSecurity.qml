@@ -13,9 +13,7 @@ Page {
 
 	onIsCurrentPageChanged: {
 		if (isCurrentPage) {
-			keyEvents.repeatCount = 0
-			keyEvents.upCount = 0
-			keyEvents.downCount = 0
+			keyEvents.enabled = false
 		}
 	}
 
@@ -27,12 +25,9 @@ Page {
 		property int downCount
 
 		target: Global
+		enabled: false
 
 		function onKeyPressed(event) {
-			if (!root.isCurrentPage) {
-				repeatCount = 0
-				return
-			}
 			if (event.key === Qt.Key_Right) {
 				// change to super user mode if the right button is pressed for a while
 				if (Global.systemSettings.accessLevel.value !== VenusOS.User_AccessType_SuperUser && ++repeatCount > 60) {
@@ -90,6 +85,14 @@ Page {
 					//% "Incorrect password"
 					return Utils.validationResult(VenusOS.InputValidation_Result_Error, qsTrId("settings_access_incorrect_password"))
 				}
+				onClicked: {
+					// When the access options list is open, enable the key shortcuts for changing
+					// the access level.
+					keyEvents.repeatCount = 0
+					keyEvents.upCount = 0
+					keyEvents.downCount = 0
+					keyEvents.enabled = true
+				}
 			}
 
 			ListRadioButtonGroup {
@@ -97,6 +100,25 @@ Page {
 
 				property int pendingProfile
 				property string pendingPassword
+
+				function setProfileAndPassword(profile, password, popPage) {
+					securityProfile.currentIndex = profile
+					// NOTE: this restarts the webserver when changed
+					var object = {"SetPassword": password, "SetSecurityProfile": profile};
+					var json = JSON.stringify(object);
+					securityApi.setValue(json);
+					// This guards the wasm version to trigger a reload even if the reply isn't received.
+					BackendConnection.securityProtocolChanged()
+					if (popPage) {
+						Global.pageManager.popPage()
+					}
+					if (Qt.platform.os === "wasm" && !BackendConnection.vrm) {
+						Global.showToastNotification(VenusOS.Notification_Info,
+													 //% "Page will automatically reload in 5 seconds"
+													 qsTrId("access_and_security_page_will_reload"),
+													 3000)
+					}
+				}
 
 				//% "Local network security profile"
 				text: qsTrId("settings_local_network_security_profile")
@@ -151,6 +173,35 @@ Page {
 					}
 				}
 
+				optionFooter: Column {
+					visible: securityProfile.currentIndex !== VenusOS.Security_Profile_Unsecured
+					width: parent.width
+					topPadding: Theme.geometry_gradientList_spacing
+
+					ListButton {
+						//% "Change password"
+						text: qsTrId("settings_security_profile_change_password")
+						//% "Update"
+						secondaryText: qsTrId("settings_security_profile_update")
+
+						onClicked: {
+							Global.dialogLayer.open(securityProfilePasswordDialogComponent)
+						}
+
+						Component {
+							id: securityProfilePasswordDialogComponent
+
+							SecurityProfilePasswordDialog {
+								id: securityProfilePasswordDialog
+
+								onAccepted: {
+									securityProfile.setProfileAndPassword(securityProfile.currentIndex, password, false)
+								}
+							}
+						}
+					}
+				}
+
 				VeQuickItem {
 					id: securityApi
 					uid: Global.venusPlatform.serviceUid + "/Security/Api"
@@ -194,20 +245,7 @@ Page {
 							const profile = securityProfile.pendingProfile
 							if (profile === VenusOS.Security_Profile_Unsecured)
 								password = "";
-							securityProfile.currentIndex = profile
-							// NOTE: this restarts the webserver when changed
-							var object = {"SetPassword": password, "SetSecurityProfile": profile};
-							var json = JSON.stringify(object);
-							securityApi.setValue(json);
-							// This guards the wasm version to trigger a reload even if the reply isn't received.
-							BackendConnection.securityProtocolChanged()
-							Global.pageManager.popPage()
-							if (Qt.platform.os === "wasm" && !BackendConnection.vrm) {
-								Global.showToastNotification(VenusOS.Notification_Info,
-															 //% "Page will automatically reload in 5 seconds"
-															 qsTrId("access_and_security_page_will_reload"),
-															 3000)
-							}
+							securityProfile.setProfileAndPassword(profile, password, true)
 						}
 						dialogDoneOptions: VenusOS.ModalDialog_DoneOptions_OkAndCancel
 						height: securityProfile.pendingProfile === VenusOS.Security_Profile_Secured

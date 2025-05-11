@@ -73,12 +73,12 @@ Page {
 								if (inputInfo.source === VenusOS.AcInputs_InputSource_NotAvailable) {
 									//: %1 = 'AC input 1' or 'AC input 2'
 									//% "%1 (not available)"
-									return qsTrId("settings_minmax_ac_in_not_available").arg(CommonWords.acInput(index))
+									return qsTrId("settings_minmax_ac_in_not_available").arg(CommonWords.acInputFromIndex(index))
 								}
 								//: %1 = 'AC input 1' or 'AC input 2', %2 = name of connected input (e.g. Grid, Shore)
 								//% "%1 (%2)"
 								return qsTrId("settings_minmax_ac_in_header_with_source")
-										.arg(CommonWords.acInput(index))
+										.arg(CommonWords.acInputFromIndex(index))
 										.arg(Global.acInputs.sourceToText(inputInfo.source))
 							}
 						}
@@ -193,12 +193,10 @@ Page {
 				//% "Max Speed"
 				text: qsTrId("settings_minmax_max_speed")
 				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Speed/Max"
+				dataItem.sourceUnit: Units.unitToVeUnit(VenusOS.Units_Speed_MetresPerSecond)
+				dataItem.displayUnit: Units.unitToVeUnit(Global.systemSettings.speedUnit)
 				unit: Global.systemSettings.speedUnit
 				decimals: 0
-				value: Global.systemSettings.convertFromKilometersPerHour(dataItem.value)
-				saveInput: function() {
-					dataItem.setValue(Global.systemSettings.convertToKilometersPerHour(textField.text))
-				}
 			}
 
 			ListQuantityField {

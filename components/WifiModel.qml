@@ -17,8 +17,15 @@ ListModel {
 				return network.network
 			}
 		}
-		//% "Disconnected | AP Off"
-		return qsTrId("wifimodel_disconnected_ap_off")
+		if (accessPoint.valid) {
+			return accessPoint.value === 1
+				//% "Disconnected | AP On"
+				? qsTrId("wifimodel_disconnected_ap_on")
+				//% "Disconnected | AP Off"
+				: qsTrId("wifimodel_disconnected_ap_off")
+		}
+		//% "Disconnected"
+		return qsTrId("wifimodel_disconnected")
 	}
 
 	property VeQuickItem servicesItem: VeQuickItem {
@@ -31,6 +38,11 @@ ListModel {
 
 	property VeQuickItem scanItem: VeQuickItem{
 		uid: Global.venusPlatform.serviceUid +  "/Network/Wifi/Scan"
+		onValueChanged: update()
+	}
+
+	property VeQuickItem accessPoint: VeQuickItem{
+		uid: Global.venusPlatform.serviceUid + "/Services/AccessPoint/Enabled"
 		onValueChanged: update()
 	}
 
@@ -72,15 +84,15 @@ ListModel {
 
 		i = 0
 		for (const [network, details] of Object.entries(wifis)) {
+			let service = details["Service"]
 			let found = false
 			for (let j = 0; j < model.count; j++) {
-				let service = details["Service"]
 				// Update existing networks
 				if (service && service === model.get(j).service) {
 					found = true
-					model.set(i, {
+					model.set(j, {
 						"network": network,
-						"service": details["Service"],
+						"service": service,
 						"state": details["State"],
 						"favorite": details["Favorite"] === "yes"
 					})
@@ -93,7 +105,7 @@ ListModel {
 				// Services are sorted by favorite and signal strength, try to maintain order
 				model.insert(i, {
 					"network": network,
-					"service": details["Service"],
+					"service": service,
 					"state": details["State"],
 					"favorite": details["Favorite"] === "yes"
 				})
@@ -104,4 +116,3 @@ ListModel {
 
 	onValidChanged: update()
 }
-

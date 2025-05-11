@@ -28,7 +28,7 @@ cmake_minimum_required(VERSION 3.24) # earlier versions of cmake don't handle 'q
 cmake_policy(SET CMP0071 NEW) # process GENERATED source files in AUTOMOC and AUTOUIC. Added to silence a cmake warning.
 cmake_policy(SET CMP0079 NEW)
 
-project(venus-gui-v2 LANGUAGES CXX VERSION 1.1.9)
+project(venus-gui-v2 LANGUAGES CXX VERSION 1.1.12)
 add_definitions(-DPROJECT_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} -DPROJECT_VERSION_MINOR=${PROJECT_VERSION_MINOR} -DPROJECT_VERSION_PATCH=${PROJECT_VERSION_PATCH} )
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -322,6 +322,7 @@ set (VENUS_QML_MODULE_SOURCES
     components/dialogs/ModalDialog.qml
     components/dialogs/ModalWarningDialog.qml
     components/dialogs/NumberSelectorDialog.qml
+    components/dialogs/SecurityProfilePasswordDialog.qml
     components/dialogs/SolarDailyHistoryDialog.qml
     components/dialogs/TimeSelectorDialog.qml
 
@@ -685,6 +686,7 @@ set (VENUS_QML_MODULE_SOURCES
     pages/vebusdevice/PageVeBusError11View.qml
     pages/vebusdevice/PageVeBusKwhCounters.qml
     pages/vebusdevice/PageVeBusSerialNumbers.qml
+    pages/vebusdevice/PageVeBusBackupRestore.qml
     pages/vebusdevice/PVCFListQuantityGroup.qml
     pages/vebusdevice/VeBusAcSensorModel.qml
     pages/vebusdevice/PageVeBus.qml
@@ -984,6 +986,22 @@ set(BoatPageComponents_QML_MODULE_SOURCES
     pages/boatpage/TimeToGo.qml
 )
 
+set_source_files_properties(pages/boatpage/BoatPage.qml PROPERTIES QT_RESOURCE_ALIAS BoatPage.qml)
+set_source_files_properties(pages/boatpage/Background.qml PROPERTIES QT_RESOURCE_ALIAS Background.qml)
+set_source_files_properties(pages/boatpage/BatteryArc.qml PROPERTIES QT_RESOURCE_ALIAS BatteryArc.qml)
+set_source_files_properties(pages/boatpage/BatteryPercentage.qml PROPERTIES QT_RESOURCE_ALIAS BatteryPercentage.qml)
+set_source_files_properties(pages/boatpage/ConsumptionGauge.qml PROPERTIES QT_RESOURCE_ALIAS ConsumptionGauge.qml)
+set_source_files_properties(pages/boatpage/Gear.qml PROPERTIES QT_RESOURCE_ALIAS Gear.qml)
+set_source_files_properties(pages/boatpage/Gps.qml PROPERTIES QT_RESOURCE_ALIAS Gps.qml)
+set_source_files_properties(pages/boatpage/LargeCenterGauge.qml PROPERTIES QT_RESOURCE_ALIAS LargeCenterGauge.qml)
+set_source_files_properties(pages/boatpage/LoadArc.qml PROPERTIES QT_RESOURCE_ALIAS LoadArc.qml)
+set_source_files_properties(pages/boatpage/MotorDrive.qml PROPERTIES QT_RESOURCE_ALIAS MotorDrive.qml)
+set_source_files_properties(pages/boatpage/MotorDriveGauges.qml PROPERTIES QT_RESOURCE_ALIAS MotorDriveGauges.qml)
+set_source_files_properties(pages/boatpage/QuantityLabelIconRow.qml PROPERTIES QT_RESOURCE_ALIAS QuantityLabelIconRow.qml)
+set_source_files_properties(pages/boatpage/TemperatureGauge.qml PROPERTIES QT_RESOURCE_ALIAS TemperatureGauge.qml)
+set_source_files_properties(pages/boatpage/TemperatureGauges.qml PROPERTIES QT_RESOURCE_ALIAS TemperatureGauges.qml)
+set_source_files_properties(pages/boatpage/TimeToGo.qml PROPERTIES QT_RESOURCE_ALIAS TimeToGo.qml)
+
 list(APPEND TRANSLATION_SOURCES ${BoatPageComponents_QML_MODULE_SOURCES})
 
 qt_add_qml_module(BoatPageComponents
@@ -996,12 +1014,12 @@ qt_add_qml_module(BoatPageComponents
 if (${LOAD_QML_FROM_FILESYSTEM})
     set(thisModule BoatPageComponents)
     qt_query_qml_module(${thisModule} QML_FILES module_qml_files QMLDIR module_qmldir)
+    install(DIRECTORY pages/boatpage/ DESTINATION ${CMAKE_INSTALL_BINDIR}/Victron/BoatPageComponents)
     install(FILES ${module_qmldir}    DESTINATION ${CMAKE_INSTALL_BINDIR}/Victron/BoatPageComponents)
-    install(FILES ${module_qml_files} DESTINATION ${CMAKE_INSTALL_BINDIR}/Victron/BoatPageComponents)
     add_custom_command(
-	TARGET ${thisModule}
-	COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/StripRegexFromFile.cmake" ${module_qmldir} "^prefer.*$"
-	VERBATIM
+        TARGET ${thisModule}
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/StripRegexFromFile.cmake" ${module_qmldir} "^prefer.*$"
+        VERBATIM
     )
 endif()
 
@@ -1009,13 +1027,13 @@ qt_add_resources(BoatPageComponents "BoatPageComponents_large_resources"
     BIG_RESOURCES
     FILES
         images/boat_glow.png
-	images/icon_battery_40.png
-	images/icon_boat_32.svg
-	images/icon_engine_temp_32.svg
-	images/icon_motorController_32.svg
-	images/icon_propeller_32.png
-	images/icon_propeller.svg
-	images/icon_temp_coolant_32.svg
+        images/icon_battery_40.png
+        images/icon_boat_32.svg
+        images/icon_engine_temp_32.svg
+        images/icon_motorController_32.svg
+        images/icon_propeller_32.png
+        images/icon_propeller.svg
+        images/icon_temp_coolant_32.svg
 )
 
 # end BoatPageComponents_QML_MODULE

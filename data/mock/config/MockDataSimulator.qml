@@ -31,7 +31,7 @@ QtObject {
 		"qrc:/qt/qml/Victron/VenusOS/pages/BriefPage.qml": briefAndOverviewConfig,
 		"qrc:/qt/qml/Victron/VenusOS/pages/OverviewPage.qml": briefAndOverviewConfig,
 		"qrc:/qt/qml/Victron/VenusOS/pages/LevelsPage.qml": levelsConfig,
-		"qrc:/qt/qml/Victron/VenusOS/pages/BoatPage.qml": boatPageConfig,
+		"qrc:/qt/qml/Victron/BoatPageComponents/BoatPage.qml": boatPageConfig,
 	})
 
 	function setMockValue(uid, value) {
@@ -118,6 +118,11 @@ QtObject {
 			break
 		case Qt.Key_A:
 			root.animationEnabled = !root.animationEnabled
+			event.accepted = true
+			break
+		case Qt.Key_B:
+			root.setMockValue(Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/Enabled",
+				root.mockValue(Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/Enabled") == 0 ? 1 : 0)
 			event.accepted = true
 			break
 		case Qt.Key_C:
