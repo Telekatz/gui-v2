@@ -52,6 +52,27 @@ ControlCard {
 		uid: root.serviceUid + "/Ac/NumberOfAcInputs"
 	}
 
+	VeQuickItem {
+		id: inverterIds
+		uid: Global.inverterChargers.firstObject.serviceUid + "/AvailableInverters"
+		onValueChanged: {
+			let options = []
+			
+			if (!value) {
+				inverterRepeater.model = []
+				return
+			}
+			
+			for (var i = 0; i < value.length; i++) {
+				options.push({	
+					display: value[i].split(':')[0], 
+					value: parseInt(value[i].split(':')[1])
+				})
+			}
+			inverterRepeater.model = options
+		}
+	}
+
 	Column {
 		anchors {
 			top: parent.status.bottom
@@ -86,6 +107,21 @@ ControlCard {
 		}
 
 		FlatListItemSeparator {}
+
+		Repeater {
+			id: inverterRepeater
+
+			delegate: SettingsColumn {
+				width: parent.width
+
+				ListSwitch {
+					text: modelData.display
+					flat: true
+					dataItem.uid: BackendConnection.serviceUidFromName("com.victronenergy.acload", modelData.value) + "/Enabled"
+				}
+				FlatListItemSeparator {}
+			}
+		}
 
 		ListButton {
 			id: essStateButton

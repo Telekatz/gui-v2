@@ -261,6 +261,45 @@ Page {
 													   })
 			}
 
+			SettingsColumn {
+				preferredVisible: productId.value == ProductInfo.ProductId_VeBus_MicroPlus
+				width: parent ? parent.width : 0
+
+				VeQuickItem {
+					id: inverterIds
+					uid: root.bindPrefix + "/AvailableInverters"
+					onValueChanged: {
+						let options = []
+						
+						if (!value) {
+							inverterRepeater.model = []
+							return
+						}
+						
+						for (var i = 0; i < value.length; i++) {
+							options.push({	
+								display: value[i].split(':')[0], 
+								value: parseInt(value[i].split(':')[1])
+							})
+						}
+						inverterRepeater.model = options
+					}
+				}
+
+				Repeater {
+					id: inverterRepeater
+
+					delegate: ListNavigation {
+						text: modelData.display
+						onClicked: {
+							Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageAcIn.qml", {
+								"bindPrefix": BackendConnection.serviceUidFromName("com.victronenergy.acload", modelData.value)
+							})
+						}
+					}
+				}
+			}
+
 			ListNavigation {
 				text: CommonWords.alarm_status
 				preferredVisible: productId.value !== ProductInfo.ProductId_VeBus_MicroPlus
