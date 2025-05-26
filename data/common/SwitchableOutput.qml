@@ -65,6 +65,7 @@ QtObject {
 	readonly property int type: _type.valid ? _type.value : -1
 	readonly property string group: _group.value ?? ""
 	readonly property string customName: _customName.value ?? ""
+	readonly property bool showUIControl: !_showUIControl.valid || _showUIControl.value === 1 // true when setting is not present
 
 	function setDimming(value) {
 		if (hasDimming) {
@@ -73,7 +74,8 @@ QtObject {
 	}
 
 	function setState(value) {
-		_state.setValue(value)
+		// require integer state value.
+		_state.setValue(value > 0 ? 1 : 0)
 	}
 
 	//--- internal implementation below
@@ -104,5 +106,9 @@ QtObject {
 
 	readonly property VeQuickItem _group: VeQuickItem {
 		uid: `${root.uid}/Settings/Group`
+	}
+
+	readonly property VeQuickItem _showUIControl: VeQuickItem {
+		uid: `${root.uid}/Settings/ShowUIControl`
 	}
 }

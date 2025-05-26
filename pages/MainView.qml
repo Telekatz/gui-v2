@@ -6,7 +6,7 @@
 import QtQuick
 import Victron.VenusOS
 
-Item {
+FocusScope {
 	id: root
 
 	readonly property color backgroundColor: !!currentPage ? currentPage.backgroundColor : Theme.color_page_background
@@ -42,6 +42,10 @@ Item {
 		}
 	}
 
+	readonly property Item _focusTarget: cardsLoader.enabled ? cardsLoader
+			: pageStack.depth > 0 && !pageStack.animating ? pageStack
+			: swipeViewAndNavBarContainer
+
 	function loadStartPage() {
 		Global.systemSettings.startPageConfiguration.loadStartPage(swipeView, pageStack.pageUrls)
 	}
@@ -58,17 +62,39 @@ Item {
 		swipeViewLoader.active = true
 	}
 
-	// Revert to the start page when the application is inactive.
+	Keys.onEscapePressed: (event) => {
+		if (Global.notificationLayer.deleteLastNotification()) {
+			return
+		} else if (cardsActive) {
+			cardsActive = false
+			return
+		} else if (pageStack.depth > 0) {
+			pageManager.popPage()
+			return
+		}
+		event.accepted = false
+	}
+	Keys.onLeftPressed: (event) => {
+		if (pageStack.activeFocus && pageStack.depth > 0) {
+			pageManager.popPage()
+			return
+		}
+		event.accepted = false
+	}
+	Keys.enabled: Global.keyNavigationEnabled
+
+	// Revert to the start page when the application has been inactive for the period of time
+	// specified by the startPageTimeout.
 	Timer {
 		running: !!Global.systemSettings
 				 && Global.systemSettings.startPageConfiguration.hasStartPage
 				 && Global.systemSettings.startPageConfiguration.startPageTimeout > 0
-				 && root.pageManager.interactivity === VenusOS.PageManager_InteractionMode_Idle
+				 && !Global.applicationActive
 		interval: Global.systemSettings.startPageConfiguration.startPageTimeout * 1000
 		onTriggered: root.loadStartPage()
 	}
 
-	// Auto-select the start page when the application is idle, if configured to do so.
+	// Auto-select the start page when the application becomes inactive, if configured to do so.
 	Connections {
 		target: Global
 		enabled: !!Global.systemSettings && Global.systemSettings.startPageConfiguration.autoSelect
@@ -82,6 +108,8 @@ Item {
 	}
 
 	FocusScope {
+		id: swipeViewAndNavBarContainer
+
 		// Anchor this to the PageStack's left side, so that this view slides out of view when
 		// the PageStack slides in (and vice-versa), giving the impression that the SwipeView
 		// itself is part of the stack.
@@ -91,9 +119,16 @@ Item {
 			right: pageStack.left
 		}
 		width: Theme.geometry_screen_width
+		focus: root._focusTarget === swipeViewAndNavBarContainer
+
+		KeyNavigation.up: statusBar
 
 		Loader {
 			id: swipeViewLoader
+
+			property bool blockItemFocus
+			property bool refreshBlockItemFocus: Global.keyNavigationEnabled
+
 			anchors {
 				top: parent.top
 				topMargin: statusBar.height
@@ -118,23 +153,51 @@ Item {
 				Global.allPagesLoaded = true
 			}
 
+			onActiveFocusChanged: {
+				if (Global.keyNavigationEnabled) {
+					if (activeFocus && refreshBlockItemFocus && item?.currentItem?.blockInitialFocus) {
+						blockItemFocus = true
+						refreshBlockItemFocus = false
+					} else if (!activeFocus && (statusBar.activeFocus || navBar.activeFocus)) {
+						// Re-refresh the focus blocker state if navigating back from status or nav bar.
+						refreshBlockItemFocus = true
+					}
+				}
+			}
+
+			KeyNavigation.down: navBar
+			Keys.onSpacePressed: blockItemFocus = false
+			Keys.enabled: Global.keyNavigationEnabled
+
 			Component {
 				id: swipeViewComponent
 				SwipeView {
 					id: _swipeView
 
 					property bool ready: Global.allPagesLoaded && !moving // hide this view until all pages are loaded and we have scrolled back to the brief page
-
 					onReadyChanged: if (ready) ready = true // remove binding
+
 					anchors.fill: parent
-					onCurrentIndexChanged: navBar.setCurrentIndex(currentIndex)
+					focus: !swipeViewLoader.blockItemFocus
 					contentChildren: swipePageModel.children
+					onCurrentIndexChanged: navBar.setCurrentIndex(currentIndex)
 				}
 			}
 
 			SwipePageModel {
 				id: swipePageModel
 				view: swipeView
+			}
+
+			KeyNavigationHighlight {
+				anchors {
+					fill: parent
+					leftMargin: Theme.geometry_page_content_horizontalMargin
+					rightMargin: Theme.geometry_page_content_horizontalMargin
+				}
+				active: swipeViewLoader.blockItemFocus
+					&& swipeViewLoader.activeFocus
+					&& root.pageManager.interactivity === VenusOS.PageManager_InteractionMode_Interactive
 			}
 		}
 
@@ -146,9 +209,30 @@ Item {
 			opacity: 0
 			model: swipeView ? swipeView.contentModel : null
 
-			onCurrentIndexChanged: if (swipeView) swipeView.setCurrentIndex(currentIndex)
+			// Give the NavBar the initial focus within MainView, when key navigation is enabled.
+			focus: Global.keyNavigationEnabled
+
+			onCurrentIndexChanged: {
+				if (swipeView) {
+					swipeView.setCurrentIndex(currentIndex)
+					if (Global.keyNavigationEnabled) {
+						focus = true // Move focus back to navbar if the SwipeView page changes.
+					}
+				}
+			}
+
+			onActiveFocusChanged: {
+				// If the key navigation moves upwards from the NavBar to the SwipeView, suggest to
+				// the SwipeView that it should focus the bottom-most item in the page.
+				if (activeFocus) {
+					root.swipeView.focusEdgeHint = Qt.BottomEdge
+				}
+			}
 
 			Component.onCompleted: pageManager.navBar = navBar
+
+			// Only move focus to SwipeView if its current page allows key navigation.
+			KeyNavigation.up: root.swipeView?.currentItem?.activeFocusOnTab ? swipeViewLoader : statusBar
 		}
 	}
 
@@ -163,6 +247,9 @@ Item {
 		}
 		x: width
 		width: Theme.geometry_screen_width
+		focus: root._focusTarget === pageStack
+
+		KeyNavigation.up: statusBar
 	}
 
 	CardViewLoader {
@@ -179,6 +266,8 @@ Item {
 		swipeViewItem : swipeView
 		backgroundColor: root.backgroundColor
 		viewActive: root.cardsActive
+		focus: root._focusTarget === cardsLoader
+		KeyNavigation.up: statusBar
 
 		Component {
 			id: controlCardsComponent
@@ -341,7 +430,18 @@ Item {
 			pageManager.popPage(toPage)
 		}
 
+		onActiveFocusChanged: {
+			// If the key navigation moves downwards from the StatusBar to the SwipeView, suggest to
+			// the SwipeView that it should focus the top-most item in the page.
+			if (activeFocus) {
+				root.swipeView.focusEdgeHint = Qt.TopEdge
+			}
+		}
+
 		Component.onCompleted: pageManager.statusBar = statusBar
+		KeyNavigation.down: cardsLoader.enabled ? cardsLoader
+				: pageStack.depth > 0 ? pageStack
+				: swipeViewAndNavBarContainer
 	}
 
 	Loader {

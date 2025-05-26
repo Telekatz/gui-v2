@@ -21,7 +21,8 @@ Page {
 
 	GradientListView {
 		model: VisibleItemModel {
-			ListItemBackground {
+			BaseListItem {
+				width: parent ? parent.width : 0
 				height: trackerTable.y + trackerTable.height
 
 				// When there is only one tracker, this table shows the overall voltage and current.
@@ -90,6 +91,10 @@ Page {
 						} else if (column === 4) {
 							return tracker.power
 						}
+					}
+					rowIsVisible: function(row) {
+						const tracker = trackerObjects.objectAt(row)
+						return tracker.enabled
 					}
 
 					Instantiator {

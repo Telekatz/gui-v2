@@ -11,6 +11,8 @@ QtObject {
 
 	readonly property string serviceUid: BackendConnection.serviceUidForType("settings")
 	readonly property bool needsOnboarding: _onboardingState.needsOnboarding
+			// The needsOnboarding setting can't be updated in ReadOnly mode, so never show onboarding in that case.
+			&& (Qt.platform.os !== "wasm" || !BackendConnection.vrm || BackendConnection.vrmPortalMode !== BackendConnection.ReadOnly)
 			// It's hard to skip onboarding without touch, so disable onboarding if touch is disabled.
 			&& _touchEnabled.valid && _touchEnabled.value !== 0
 
@@ -18,6 +20,7 @@ QtObject {
 	property int temperatureUnit: VenusOS.Units_None
 	property string temperatureUnitSuffix
 	property int volumeUnit: VenusOS.Units_None
+	property int altitudeUnit: VenusOS.Units_None
 	readonly property StartPageConfiguration startPageConfiguration: StartPageConfiguration {
 		systemSettingsUid: root.serviceUid
 	}
@@ -288,6 +291,27 @@ QtObject {
 
 	property VeQuickItem _speedUnit: VeQuickItem {
 		uid: Global.systemSettings.serviceUid + "/Settings/Gps/SpeedUnit"
+	}
+
+	property VeQuickItem _altitudeUnit: VeQuickItem {
+		readonly property string ve_meter: "meter"
+		readonly property string ve_foot: "foot"
+
+		uid: root.serviceUid + "/Settings/System/Units/Altitude"
+		onValueChanged: {
+			switch (value) {
+			case ve_meter:
+				root.altitudeUnit = VenusOS.Units_Altitude_Meter
+				break
+			case ve_foot:
+				root.altitudeUnit = VenusOS.Units_Altitude_Foot
+				break
+			default:
+				console.warn("Cannot load altitude unit,", uid, "has unsupported value:", value, "default to meter")
+				root.altitudeUnit = VenusOS.Units_Altitude_Meter
+				break
+			}
+		}
 	}
 
 	property VeQuickItem _volumeUnit: VeQuickItem {

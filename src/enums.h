@@ -60,6 +60,13 @@ public:
 	};
 	Q_ENUM(StatusBar_RightButton)
 
+	enum SpinBox_FocusMode {
+		SpinBox_FocusMode_NoAction,
+		SpinBox_FocusMode_Navigate,
+		SpinBox_FocusMode_Edit
+	};
+	Q_ENUM(SpinBox_FocusMode)
+
 	enum Units_Type {
 		Units_None = 0,
 		Units_Volume_CubicMeter,
@@ -90,7 +97,9 @@ public:
 		Units_PowerFactor,
 		Units_Time_Day,
 		Units_Time_Hour,
-		Units_Time_Minute
+		Units_Time_Minute,
+		Units_Altitude_Meter,
+		Units_Altitude_Foot
 	};
 	Q_ENUM(Units_Type)
 
@@ -689,12 +698,12 @@ public:
 	};
 	Q_ENUM(Evcs_Mode)
 
-	enum Evcs_Position {
-		Evcs_Position_ACOutput,
-		Evcs_Position_ACInput,
-		Evcs_Position_Unknown = 100
+	enum AcPosition {
+		AcPosition_AcOutput,
+		AcPosition_AcInput,
+		AcPosition_Unknown = 100
 	};
-	Q_ENUM(Evcs_Position)
+	Q_ENUM(AcPosition)
 
 	enum PvInverter_StatusCode {
 		PvInverter_StatusCode_Startup0,
@@ -783,7 +792,8 @@ public:
 		StartPage_Type_Overview,
 		StartPage_Type_Levels_Tanks,
 		StartPage_Type_Levels_Environment,
-		StartPage_Type_BatteryList
+		StartPage_Type_BatteryList,
+		StartPage_Type_Boat
 	};
 	Q_ENUM(StartPage_Type)
 

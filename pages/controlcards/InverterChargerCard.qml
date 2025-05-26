@@ -73,7 +73,7 @@ ControlCard {
 		}
 	}
 
-	Column {
+	SettingsColumn {
 		anchors {
 			top: parent.status.bottom
 			topMargin: Theme.geometry_controlCard_status_bottomMargin

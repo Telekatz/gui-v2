@@ -5,12 +5,16 @@
 import QtQuick
 import Victron.VenusOS
 
-Item {
+BaseListItem {
 	id: root
 
 	required property string outputUid
 	readonly property int _buttonWidth: Theme.geometry_controlCard_minimumWidth
 			- (2 * Theme.geometry_controlCard_button_margins)
+
+	// Hide the delegate highlight when the loader item is showing its own highlight (i.e. if
+	// showing a DimmingSlider in edit mode).
+	navigationHighlight.active: activeFocus && !switchWidgetLoader.item?.activeFocus
 
 	SwitchableOutput {
 		id: output
@@ -96,106 +100,235 @@ Item {
 		Loader {
 			id: switchWidgetLoader
 			anchors.horizontalCenter: parent.horizontalCenter
-			sourceComponent: output.type === VenusOS.SwitchableOutput_Type_Dimmable ? dimmingSlider
-					: output.type === VenusOS.SwitchableOutput_Type_Momentary ? momentarySwitchButton
-					: output.type === VenusOS.SwitchableOutput_Type_Latching ? latchingButton
+			sourceComponent: output.type === VenusOS.SwitchableOutput_Type_Dimmable ? dimmingComponent
+					: output.type === VenusOS.SwitchableOutput_Type_Momentary ? momentaryComponent
+					: output.type === VenusOS.SwitchableOutput_Type_Latching ? latchingComponent
 					: null
+
+			// Instead of giving focus to the individual controls, handle the keys directly here.
+			// This is consistent with the Control Cards, which focus the overall delegates in each
+			// card, rather than the controls within the delegates.
+			// (The DimmingSlider is a special case; it needs to be focused individually to provide
+			// an "edit" mode, so that left/right keys will move the slider instead of navigating to
+			// the previous/next item in the grid.)
+			focus: true
+			Keys.onPressed: (event) => { event.accepted = !event.isAutoRepeat && item.handlePress !== undefined && item.handlePress(event.key) }
+			Keys.onReleased: (event) => { event.accepted = item.handleRelease !== undefined && item.handleRelease(event.key) }
+			Keys.enabled: Global.keyNavigationEnabled
 		}
 	}
 
 	Component {
-		id: dimmingSlider
+		id: dimmingComponent
 
 		DimmingSlider {
 			id: slider
 
-			property real movedValue: NaN
+			property bool valueChangeKeyPressed
+			readonly property bool dragging: pressed || valueChangeKeyPressed
+
+			// When space key is pressed, enter an "edit" (i.e. focused) mode where the space key
+			// toggles the on/off state and left/right keys move the slider.
+			// When return key is pressed, exit the edit mode.
+			function handlePress(key) {
+				switch (key) {
+				case Qt.Key_Space:
+					if (activeFocus) {
+						_toggleState()
+					} else {
+						focus = true
+					}
+					return true
+				case Qt.Key_Return:
+					focus = false
+					return true
+				case Qt.Key_Up:
+				case Qt.Key_Down:
+					// Remove focus and reject event to allow key navigation to delegates above/below.
+					focus = false
+					return false
+				}
+				return false
+			}
+
+			function _toggleState() {
+				if (!dimmingState.busy) {
+					dimmingState.writeValue(output.state === 0 ? 1 : 0)
+				}
+			}
 
 			width: root._buttonWidth
 			height: Theme.geometry_switchableoutput_button_height
-			highlightColor: output.state === 1 ? Theme.color_ok : Theme.color_button_down
+			highlightColor: enabled
+				? (dimmingState.expectedValue === 1 ? Theme.color_ok : Theme.color_button_down)
+				: Theme.color_font_disabled
 			from: 1
 			to: 100
+			stepSize: 1
+
+			// On the MQTT backend, many consecutive changes can create a huge queue of backend
+			// changes. Avoid this by preventing changes until the backend is in sync.
+			enabled: !dimmingValue.busy || dragging
+
+			onDraggingChanged: {
+				if (!dragging) {
+					dimmingValue.syncBackendValueToSlider()
+				}
+			}
 			onClicked: {
-				output.setState(output.state === 0 ? 1 : 0)
+				_toggleState()
 			}
 			onMoved: {
 				value = Math.round(value)
-				output.setDimming(value)
-				movedValue = value
+				dimmingValue.writeValue(value)
 			}
 
-			Connections {
-				target: output
-				Component.onCompleted: slider.value = output.dimming
-
-				// Update the slider value from the backend. If the backend value is changing in
-				// response to slider user input, the backend change may lag behind the user change,
-				// so do not update the slider value until the slider and backend values are in
-				// sync, else the two values will fight each other.
-				function onDimmingChanged() {
-					if (isNaN(slider.movedValue)) {
-						// The slider was not moved, so the value change must have come from
-						// the backend independently, and the slider value can updated directly.
-						slider.value = output.dimming
-					} else if (slider.movedValue === Math.round(output.dimming)) {
-						// The user moved the slider and the backend is now up-to-date with the
-						// user-moved value, so clear the flag.
-						slider.movedValue = NaN
-					} else {
-						// The slider was moved, and the backend value changed in response, but
-						// the backend still has an older moved value from the UI, so ignore
-						// this as the backend is not yet up-to-date with the UI value.
-					}
+			Keys.onPressed: (event) => {
+				if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+					valueChangeKeyPressed = true
 				}
+				event.accepted = false
+			}
+			Keys.onReleased: (event) => {
+				if (event.key === Qt.Key_Left || event.key === Qt.Key_Right) {
+					valueChangeKeyPressed = false
+				}
+				event.accepted = false
 			}
 
 			Label {
 				anchors.centerIn: parent
-				text: output.state === 1 ? CommonWords.on : CommonWords.off
+				text: CommonWords.onOrOff(dimmingState.expectedValue)
 				font.pixelSize: Theme.font_size_body2
+			}
+
+			KeyNavigationHighlight {
+				anchors.fill: parent
+				active: parent.activeFocus
+			}
+
+			SettingSync {
+				id: dimmingState
+				backendValue: output.state
+				onUpdateToBackend: (value) => { output.setState(value) }
+			}
+
+			SettingSync {
+				id: dimmingValue
+
+				// Update the slider value to the backend value.
+				function syncBackendValueToSlider() {
+					// If user has interacted with the slider to change the value, delay briefly
+					// before syncing the slider to the backend value, else this may be done while
+					// user changes are still being written.
+					if (busy || slider.dragging || delayedSliderUpdate.running) {
+						delayedSliderUpdate.restart()
+					} else {
+						slider.value = backendValue
+					}
+				}
+
+				backendValue: output.dimming
+				onUpdateToBackend: (value) => { output.setDimming(value) }
+				onBackendValueChanged: syncBackendValueToSlider()
+				onBusyChanged: if (!busy) syncBackendValueToSlider()
+			}
+
+			Timer {
+				id: delayedSliderUpdate
+				interval: 1000
+				onTriggered: dimmingValue.syncBackendValueToSlider()
 			}
 		}
 	}
 
 	Component {
-		id: momentarySwitchButton
+		id: momentaryComponent
 
 		Button {
+			id: momentaryButton
+
+			property bool spaceKeyPressed
+
+			function handlePress(key) { return _handleKey(key, 1) }
+			function handleRelease(key) { return _handleKey(key, 0) }
+			function _handleKey(key, newValue) {
+				if (key === Qt.Key_Space) {
+					spaceKeyPressed = newValue === 1
+					if (enabled) {
+						momentaryState.writeValue(newValue)
+						return true
+					}
+				}
+				return false
+			}
+
 			width: root._buttonWidth
 			height: Theme.geometry_switchableoutput_button_height
 			font.pixelSize: Theme.font_size_body2
 			//% "Press"
 			text: qsTrId("switchable_output_press")
 			flat: false
-			checked: output.state === 1
-			onPressed: output.setState(1)
-			onReleased: output.setState(0)
-			onCanceled: output.setState(0)
+
+			// Disable if a write is in progress, unless expecting mouse/key release.
+			enabled: !momentaryState.busy || pressed || spaceKeyPressed
+
+			onPressed: momentaryState.writeValue(1)
+			onReleased: momentaryState.writeValue(0)
+			onCanceled: momentaryState.writeValue(0)
+
+			// When UI is idle, update the button to reflect the backend state.
+			Binding {
+				when: !momentaryState.busy && !momentaryButton.pressed && !momentaryButton.spaceKeyPressed
+				momentaryButton.checked: momentaryState.backendValue === 1
+			}
+
+			SettingSync {
+				id: momentaryState
+				backendValue: output.state
+				onUpdateToBackend: (value) => { output.setState(value) }
+			}
 		}
 	}
 
 	Component {
-		id: latchingButton
+		id: latchingComponent
 
 		SegmentedButtonRow {
 			id: buttonRow
+
+			function handlePress(key) {
+				if (key === Qt.Key_Space && enabled) {
+					// Toggle the currentIndex between 0 and 1.
+					activateIndex(currentIndex === 0 ? 1 : 0)
+					return true
+				}
+				return false
+			}
+
+			function activateIndex(index) {
+				const newValue = index === 1 ? 1 : 0
+				if (newValue !== latchingState.backendValue) {
+					currentIndex = index
+					latchingState.writeValue(newValue)
+				}
+			}
+
 			width: root._buttonWidth
 			height: Theme.geometry_switchableoutput_button_height
 			fontPixelSize: Theme.font_size_body2
-			currentIndex: output.state === 1 ? 1 : 0
 			model: [{ "value": CommonWords.off }, { "value": CommonWords.on }]
-			onCurrentIndexChanged: {
-				output.setState(currentIndex === 1 ? 1 : 0)
+			enabled: !latchingState.busy
+			onButtonClicked: (buttonIndex) => {
+				activateIndex(buttonIndex)
 			}
 
-			// currentIndex binding is broken when user clicks the button, so ensure value is
-			// updated if backend value changes.
-			Connections {
-				target: output
-				function onStateChanged() {
-					buttonRow.currentIndex = output.state === 1 ? 1 : 0
-				}
+			SettingSync {
+				id: latchingState
+				backendValue: output.state
+				onUpdateToBackend: (value) => { output.setState(value) }
+				onBackendValueChanged: buttonRow.currentIndex = backendValue === 1 ? 1 : 0
+				Component.onCompleted: buttonRow.currentIndex = backendValue === 1 ? 1 : 0
 			}
 		}
 	}

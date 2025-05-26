@@ -19,6 +19,8 @@ SwipeViewPage {
 	navButtonIcon: "qrc:/images/settings.svg"
 	url: "qrc:/qt/qml/Victron/VenusOS/pages/SettingsPage.qml"
 	topLeftButton: VenusOS.StatusBar_LeftButton_ControlsInactive
+	activeFocusOnTab: true
+	blockInitialFocus: true
 
 	GradientListView {
 		id: settingsListView
@@ -38,8 +40,8 @@ SwipeViewPage {
 			SettingsListNavigation {
 				//% "General"
 				text: qsTrId("settings_general")
-				//% "Access control, Display, Language, Support"
-				secondaryText: qsTrId("settings_access_control_display_language")
+				//% "Access control, Display, Firmware, Support"
+				secondaryText: qsTrId("settings_access_control_display_firmware")
 				pageSource: "/pages/settings/PageSettingsGeneral.qml"
 				iconSource: "qrc:/images/icon_general_32.png"
 			}

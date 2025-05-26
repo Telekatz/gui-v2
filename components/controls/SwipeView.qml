@@ -14,6 +14,8 @@ T.SwipeView {
 	readonly property alias dragging: listView.dragging
 	readonly property bool moving: listView.moving || scrollingTimer.running
 
+	property int focusEdgeHint
+
 	function pageInView(pageXStart, pageWidth, threshold) {
 		const pageXEnd = pageXStart + pageWidth
 		const visibleXStart = listView.contentX + threshold
@@ -41,6 +43,7 @@ T.SwipeView {
 		onCurrentIndexChanged: scrollingTimer.restart()	// 'listView.moving' stays false when we are moving to a different page due to clicking on the nav bar.
 														// The scrolling timer is needed to tell us when the listView is in motion due to a nav bar click.
 		focus: control.focus
+		keyNavigationEnabled: false
 
 		spacing: control.spacing
 		orientation: control.orientation

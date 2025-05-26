@@ -17,9 +17,11 @@ QtObject {
 
 	readonly property var options: [
 		{
-			//: The 'Brief' page
-			//% "Brief"
-			display: qsTrId("startpage_option_brief_without_panel"),
+			display: CommonWords.boat_page,
+			value: _jsonStringForType(VenusOS.StartPage_Type_Boat),
+		},
+		{
+			display: CommonWords.brief_page,
 			value: _jsonStringForType(VenusOS.StartPage_Type_Brief_SidePanelClosed),
 		},
 		{
@@ -111,6 +113,11 @@ QtObject {
 
 	function _jsonStringForType(startPageType) {
 		switch (startPageType) {
+		case VenusOS.StartPage_Type_Boat:
+			return JSON.stringify({
+				main: { page: "BoatPage.qml", properties: {} },
+				stack: [],
+			})
 		case VenusOS.StartPage_Type_Brief_SidePanelClosed:
 			return JSON.stringify({
 				main: { page: "BriefPage.qml", properties: { showSidePanel: false } },
@@ -149,6 +156,8 @@ QtObject {
 
 	function _findStartPageTypeForView(mainPageName, mainPage, stackPageUrls) {
 		switch (mainPageName) {
+		case "BoatPage.qml":
+			return VenusOS.StartPage_Type_Boat
 		case "BriefPage.qml":
 			if (stackPageUrls.length === 0) {
 				if (mainPage.showSidePanel === undefined) {

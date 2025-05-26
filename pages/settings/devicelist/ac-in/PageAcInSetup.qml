@@ -63,9 +63,7 @@ Page {
 		onValueChanged: {
 			const roles = value
 			role.optionModel = roles ? roles.map(function(v) {
-				// heatpump feature is not properly supported yet. So, hide it unless it is the
-				// currently selected option.
-				return { "display": Global.acInputs.roleName(v), "value": v, "readOnly": v === "heatpump" }
+				return { "display": Global.acInputs.roleName(v), "value": v }
 			}) : []
 		}
 	}
@@ -104,9 +102,11 @@ Page {
 				preferredVisible: role.currentValue === "pvinverter"
 			}
 
-			ListEvChargerPositionRadioButtonGroup {
-				dataItem.uid: root.bindPrefix + "/Position"
-				preferredVisible: role.currentValue === "evcharger"
+			ListAcInPositionRadioButtonGroup {
+				bindPrefix: root.bindPrefix
+				preferredVisible: role.currentValue === "acload"
+						|| role.currentValue === "evcharger"
+						|| role.currentValue === "heatpump"
 			}
 
 			/* EM24 settings */

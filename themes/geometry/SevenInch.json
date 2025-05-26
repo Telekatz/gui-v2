@@ -17,8 +17,11 @@
     "geometry_barGauge_phaseLabel_rightPadding": 3,
 
     "geometry_button_spacing": 7,
-    "geometry_button_radius": 6,
+    "geometry_button_radius": 8,
     "geometry_button_border_width": 2,
+
+    "geometry_focus_highlight_corner_size": 14,
+    "geometry_focus_highlight_border_size": 4,
 
     "geometry_silenceAlarmButton_horizontalPadding": 16,
 
@@ -27,8 +30,6 @@
 
     "geometry_listSectionHeader_topPadding": 18,
     "geometry_listSectionHeader_bottomPadding": 8,
-
-    "geometry_panel_radius": 8,
 
     "geometry_progressBar_height": 8,
     "geometry_progressBar_radius": 8,
@@ -82,6 +83,7 @@
     "geometry_separatorBar_size": 1,
     "geometry_separatorBar_horizontalMargin": 8,
 
+    "geometry_statusBar_button_height": 52,
     "geometry_statusBar_height": 56,
     "geometry_statusBar_horizontalMargin": 32,
     "geometry_statusBar_rightSideRow_horizontalMargin" : 16,
@@ -92,15 +94,17 @@
 
     "geometry_timeSelector_spinBox_width": 238,
     "geometry_timeSelector_spinBox_height": 72,
-    "geometry_timeSelector_spacing": 16,
+    "geometry_spinBox_wide_spacing": 10,
+    "geometry_timeSelector_horizontalMargin": 16,
     "geometry_tankShapeSelector_spinBox_width": 262,
     "geometry_tankShapeSelector_spinBox_height": 72,
 
     "geometry_navigationBar_initialize_margin": 12,
     "geometry_navigationBar_height": 72,
+    "geometry_navigationBar_button_height": 64,
     "geometry_navigationBar_button_icon_width": 32,
     "geometry_navigationBar_button_icon_height": 32,
-    "geometry_navigationBar_button_spacing": "geometry_button_spacing",
+    "geometry_navigationBar_button_spacing": 4,
     "geometry_navigationBar_notifications_redDot_leftMargin": 1,
     "geometry_navigationBar_notifications_redDot_topMargin": 6,
     "geometry_navigationBar_notification_counter_height": 20,
@@ -431,7 +435,7 @@
     "geometry_boatPage_shadow_topRow_topMargin": 119,
     "geometry_boatPage_shadow_bottomRow_topMargin": 296,
     "geometry_boatPage_shadow_horizontalMargin": 89,
-    "geometry_boatPage_batteryGauge_leftMargin": 25,
+    "geometry_boatPage_batteryGauge_leftMargin": 43,
     "geometry_boatPage_batteryGauge_verticalCenterOffset": 15,
     "geometry_boatPage_batteryGauge_strokeWidth": 15,
     "geometry_boatPage_topRow_horizontalMargin": 130,

@@ -129,13 +129,10 @@ Page {
 				preferredVisible: digitalModel.rowCount > 0
 				onClicked: Global.pageManager.pushPage(digitalInputsComponent, {"title": text})
 
-				VeQItemSortTableModel {
+				VeQItemTableModel {
 					id: digitalModel
-					filterRegExp: "/[1-9]$"
-					model: VeQItemTableModel {
-						uids: [ Global.systemSettings.serviceUid + "/Settings/DigitalInput" ]
-						flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
-					}
+					uids: [ BackendConnection.serviceUidForType("digitalinputs") + "/Devices" ]
+					flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
 				}
 
 				Component {
@@ -160,11 +157,20 @@ Page {
 							model: digitalModel
 
 							delegate: ListRadioButtonGroup {
-								//: %1 = number of the digital input
-								//% "Digital input %1"
-								text: qsTrId("settings_io_digital_input").arg(model.uid.split('/').pop())
+								text: inputLabel.value || ""
 								dataItem.uid: model.uid + "/Type"
 								optionModel: delegateOptionModel
+
+								// TODO ideally digitalModel would filter out offline items using
+								// VeQItemSortTableModel.FilterOffline, but currently those are only
+								// filtered out when the service is offline, rather than the leaf
+								// items.
+								preferredVisible: dataItem.valid
+
+								VeQuickItem {
+									id: inputLabel
+									uid: model.uid + "/Label"
+								}
 							}
 						}
 					}
@@ -200,8 +206,26 @@ Page {
 			}
 
 			PrimaryListLabel {
-				//% "Note that the following features are not officially supported by Victron. Please turn to community.victronenergy.com for questions.\n\nDocumentation at https://ve3.nl/vol"
+				//% "Note that the following features are not officially supported by Victron. Please turn to the Victron Community for questions."
 				text: qsTrId("settings_large_features_not_offically_supported")
+				preferredVisible: osLargeFeatures.visible
+			}
+
+			ListLink {
+				//% "Documentation"
+				text: qsTrId("settings_large_documentation")
+				url: "https://ve3.nl/vol"
+				preferredVisible: osLargeFeatures.visible
+			}
+
+			ListLink {
+				//% "Victron Community"
+				text: qsTrId("settings_large_victron_community")
+				url: "https://community.victronenergy.com"
+				preferredVisible: osLargeFeatures.visible
+			}
+
+			SettingsListHeader {
 				preferredVisible: osLargeFeatures.visible
 			}
 
@@ -220,9 +244,10 @@ Page {
 				preferredVisible: dataItem.valid
 			}
 
-			PrimaryListLabel {
-				//% "Access Signal K at http://venus.local:3000 and via VRM."
+			ListLink {
+				//% "Access Signal K locally or via VRM"
 				text: qsTrId("settings_large_access_signal_k")
+				url: "http://venus.local:3000"
 				preferredVisible: signalk.checked
 			}
 
@@ -231,6 +256,20 @@ Page {
 
 				//% "Node-RED"
 				text: qsTrId("settings_large_node_red")
+				secondaryText: {
+					if (nodeRedModeItem.value === VenusOS.NodeRed_Mode_Disabled) {
+						return CommonWords.disabled
+					} else if (nodeRedModeItem.value === VenusOS.NodeRed_Mode_EnabledWithSafeMode) {
+						return qsTrId("settings_large_enabled_safe_mode")
+					} else if (nodeRedModeItem.value === VenusOS.NodeRed_Mode_Enabled) {
+						return CommonWords.enabled
+					} else if (nodeRedModeItem.value === VenusOS.NodeRed_Mode_EnabledWithSafeMode) {
+						//% "Enabled (safe mode)"
+						return qsTrId("settings_large_enabled_safe_mode")
+					} else {
+						return ""
+					}
+				}
 				preferredVisible: nodeRedModeItem.valid
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsNodeRed.qml", {"title": text })
 

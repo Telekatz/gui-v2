@@ -45,6 +45,11 @@ Window {
 		console.warn("Rebuilding complete")
 	}
 
+	function ensureApplicationActive() {
+		Global.applicationActive = true
+		appIdleTimer.restart()
+	}
+
 	Component.onCompleted: Global.main = root
 
 	Loader {
@@ -77,16 +82,36 @@ Window {
 		onScaleChanged: Global.scalingRatio = contentItem.scale
 		scale: Math.min(root.width/Theme.geometry_screen_width, root.height/Theme.geometry_screen_height)
 
-		// Ideally each item would use focus handling to get its own key events, but in wasm the
-		// pagestack's pages do not reliably receive key events even when focused.
-		Keys.onPressed: function(event) {
-			Global.keyPressed(event)
-			event.accepted = false
-		}
+		// #2161 Key nav is disabled for now
+		// Keys.onPressed: function(event) {
+		//     // When a navigation key is pressed and it is not handled by an item higher up in the
+		//     // UI item hierarchy, enable key navigation to allow guiLoader to get focus and receive
+		//     // key events.
+		//     if (!Global.keyNavigationEnabled) {
+		//         switch (event.key) {
+		//         case Qt.Key_Left:
+		//         case Qt.Key_Right:
+		//         case Qt.Key_Up:
+		//         case Qt.Key_Down:
+		//         case Qt.Key_Tab:
+		//         case Qt.Key_Backtab:
+		//             Global.keyNavigationEnabled = true
+		//             event.accepted = true
+		//             return
+		//         }
+		//     }
+		//     event.accepted = false
+		// }
 	}
 
 	Loader {
 		id: guiLoader
+
+		// Receive key events if key navigation is enabled.
+		focus: Global.keyNavigationEnabled
+				// Do not receive focus while a dialog is open, as the key events will cause the
+				// focus item to change in the main UI.
+				&& !Global.dialogLayer?.currentDialog
 
 		clip: Qt.platform.os == "wasm" || Global.isDesktop
 		width: Theme.geometry_screen_width
@@ -104,6 +129,7 @@ Window {
 		active: Global.dataManagerLoaded
 		sourceComponent: ApplicationContent {
 			anchors.centerIn: parent
+			focus: true
 		}
 	}
 
@@ -125,6 +151,23 @@ Window {
 		active: Global.splashScreenVisible
 		sourceComponent: SplashView {
 			anchors.centerIn: parent
+		}
+	}
+
+	Timer {
+		id: appIdleTimer
+		running: !Global.splashScreenVisible
+		interval: 60000
+		onTriggered: {
+			Global.applicationActive = false
+
+			// Disable key nav when app is inactive; user can re-enable it later by pressing a
+			// navigation key. Do not disable key nav when a dialog is shown, because the user
+			// cannot re-enable it within a modal dialog, as ModalDialog focus is only enabled when
+			// keyNavigationEnabled=true.
+			if (!Global.dialogLayer?.currentDialog) {
+				Global.keyNavigationEnabled = false
+			}
 		}
 	}
 

@@ -18,6 +18,7 @@ QtObject {
 	property var firmwareUpdate
 	property var allDevicesModel
 	property bool applicationActive: true
+	property bool keyNavigationEnabled
 
 	readonly property bool backendReady: BackendConnection.state === BackendConnection.Ready
 		&& (Qt.platform.os !== "wasm"
@@ -69,7 +70,6 @@ QtObject {
 	onBackendReadyChanged: if (backendReady) backendReadyLatched = true
 
 	signal aboutToFocusTextField(var textField, var textFieldContainer, var flickable)
-	signal keyPressed(var event)
 
 	function showToastNotification(category, text, autoCloseInterval = 0) {
 		if (!!notificationLayer) {

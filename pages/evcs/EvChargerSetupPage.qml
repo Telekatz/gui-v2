@@ -65,8 +65,8 @@ Page {
 				}
 			}
 
-			ListEvChargerPositionRadioButtonGroup {
-				dataItem.uid: root.bindPrefix + "/Position"
+			ListAcInPositionRadioButtonGroup {
+				bindPrefix: root.bindPrefix
 			}
 
 			ListSwitch {

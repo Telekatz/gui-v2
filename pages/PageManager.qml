@@ -4,6 +4,7 @@
 */
 
 import QtQml
+import QtQuick.Controls as C
 import Victron.VenusOS
 
 QtObject {
@@ -49,7 +50,34 @@ QtObject {
 		emitter.pagePopRequested(toPage, operation)
 	}
 
+	function popToAbovePage(page, operation = PageStack.PopTransition) {
+		if (page) {
+			const stackView = page.C.StackView.view
+			for (let i = stackView.depth - 1; i >= 0; --i) {
+				if (stackView.get(i, C.StackView.DontLoad) === page) {
+					const targetPage = i === 0 ? null : stackView.get(i - 1, C.StackView.DontLoad)
+					if (targetPage) {
+						root.popPage(targetPage)
+						return
+					}
+				}
+			}
+		}
+		popAllPages(operation)
+	}
+
 	function popAllPages(operation = PageStack.PopTransition) {
 		emitter.popAllPagesRequested(operation)
+	}
+
+	function ensureInteractive() {
+		if (idleModeTimer.running) {
+			idleModeTimer.restart()
+		}
+		if (interactivity === VenusOS.PageManager_InteractionMode_Idle) {
+			interactivity = VenusOS.PageManager_InteractionMode_EndFullScreen
+			return true
+		}
+		return false
 	}
 }
