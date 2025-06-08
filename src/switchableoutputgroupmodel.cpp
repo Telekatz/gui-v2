@@ -176,6 +176,7 @@ void SwitchableOutputGroupModel::updateSortTokenInGroup(int groupIndex, const QS
 			  [this](const QString &uid1, const QString &uid2) {
 		return outputUidLessThan(uid1, uid2);
 	});
+	emit dataChanged(createIndex(groupIndex, 0), createIndex(groupIndex, 0), { OutputUidsRole });
 }
 
 void SwitchableOutputGroupModel::updateDeviceGroupName(BaseDevice *device)
@@ -276,7 +277,9 @@ int SwitchableOutputGroupModel::outputUidInsertionIndex(const QStringList &outpu
 
 void SwitchableOutputGroupModel::addOutputToGroup(int index, const QString &outputUid)
 {
-	if (index >= 0 && index < m_groups.count()) {
+	if (index >= 0
+			&& index < m_groups.count()
+			&& m_groups[index].outputUids.indexOf(outputUid) < 0) {
 		m_groups[index].outputUids.insert(outputUidInsertionIndex(m_groups[index].outputUids, outputUid), outputUid);
 		emit dataChanged(createIndex(index, 0), createIndex(index, 0), { OutputUidsRole });
 	}
@@ -291,8 +294,12 @@ void SwitchableOutputGroupModel::removeOutputFromGroup(int index, const QString 
 			// altogether.
 			removeGroupAt(index);
 		} else {
-			m_groups[index].outputUids.removeOne(outputUid);
-			emit dataChanged(createIndex(index, 0), createIndex(index, 0), { OutputUidsRole });
+			if (m_groups[index].outputUids.removeOne(outputUid)) {
+				emit dataChanged(createIndex(index, 0), createIndex(index, 0), { OutputUidsRole });
+			} else {
+				qWarning() << "Cannot find output" << outputUid << "in group:"
+						   << m_groups[index].name << m_groups[index].namedGroup;
+			}
 		}
 		m_outputSortTokens.remove(outputUid);
 	}
@@ -312,13 +319,14 @@ void SwitchableOutputGroupModel::removeGroupAt(int index)
 {
 	if (index >= 0 && index < m_groups.count()) {
 		beginRemoveRows(QModelIndex(), index, index);
-		m_groups.removeAt(index);
+		Group group = m_groups.takeAt(index);
 
 		// If there are no more groups linked to this device, then remove the known device.
-		if (countGroupsWithDevice(m_groups.at(index).deviceServiceUid) == 0) {
-			BaseDevice *device = m_knownDevices.take(m_groups.at(index).deviceServiceUid);
-			device->disconnect(this);
-			delete device;
+		if (countGroupsWithDevice(group.deviceServiceUid) == 0) {
+			if (BaseDevice *device = m_knownDevices.take(group.deviceServiceUid)) {
+				device->disconnect(this);
+				delete device;
+			}
 		}
 
 		endRemoveRows();
