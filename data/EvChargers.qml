@@ -9,96 +9,39 @@ import Victron.VenusOS
 QtObject {
 	id: root
 
-	property real power: NaN
-	property real current: NaN
-	property real energy: NaN
+	readonly property real power: model.totalPower
+	readonly property real current: model.totalCurrent
+	readonly property real energy: model.totalEnergy
 
-	property int acInputPositionCount   // Chargers with input position, i.e. connected to (non-essential) AC loads
-	property real acInputPositionPower: NaN // The total power for chargers with an input position
-	property int acOutputPositionCount  // Chargers with output position, i.e. connected to Essential loads
-	property real acOutputPositionPower: NaN // The total power for chargers with an output position
+	readonly property int acInputPositionCount: model.inputCount   // Chargers with input position, i.e. connected to (non-essential) AC loads
+	readonly property real acInputPositionPower: model.inputPower // The total power for chargers with an input position
+	readonly property int acOutputPositionCount: model.outputCount  // Chargers with output position, i.e. connected to Essential loads
+	readonly property real acOutputPositionPower: model.outputPower // The total power for chargers with an output position
 
-	property DeviceModel model: DeviceModel {
-		modelId: "evChargers"
-	}
+	readonly property EvChargerDeviceModel model: EvChargerDeviceModel {}
 
 	readonly property var maxCurrentPresets: [6, 8, 10, 14, 16, 24, 32].map(function(v) { return { value: v } })
 
 	readonly property var modeOptionModel: [
 		{
-			display: chargerModeToText(VenusOS.Evcs_Mode_Manual),
+			display: root.chargerModeToText(VenusOS.Evcs_Mode_Manual),
 			value: VenusOS.Evcs_Mode_Manual,
 			//% "Start and stop the process yourself. Use this for quick charges and close monitoring."
 			caption: qsTrId("evcs_manual_caption")
 		},
 		{
-			display: Global.evChargers.chargerModeToText(VenusOS.Evcs_Mode_Auto),
+			display: root.chargerModeToText(VenusOS.Evcs_Mode_Auto),
 			value: VenusOS.Evcs_Mode_Auto,
 			//% "Starts and stops based on the battery charge level. Optimal for overnight and extended charges to avoid overcharging."
 			caption: qsTrId("evcs_auto_caption")
 		},
 		{
-			display: Global.evChargers.chargerModeToText(VenusOS.Evcs_Mode_Scheduled),
+			display: root.chargerModeToText(VenusOS.Evcs_Mode_Scheduled),
 			value: VenusOS.Evcs_Mode_Scheduled,
 			//% "Lower electricity rates during off-peak hours or if you want to ensure that your EV is fully charged and ready to go at a specific time."
 			caption: qsTrId("evcs_scheduled_caption")
 		}
 	]
-
-	function addCharger(evCharger) {
-		if (model.addDevice(evCharger)) {
-			updateTotals()
-		}
-	}
-
-	function removeCharger(evCharger) {
-		if (model.removeDevice(evCharger.serviceUid)) {
-			updateTotals()
-		}
-	}
-
-	function updateTotals() {
-		_measurementUpdates.start()
-	}
-
-	function _doUpdateTotals() {
-		let totalPower = NaN
-		let totalEnergy = NaN
-		let overallCurrent = NaN // current cannot be summed, so it is NaN when > 1 charger
-
-		let totalInputCount = 0
-		let totalInputPower = NaN
-		let totalOutputCount = 0
-		let totalOutputPower = NaN
-
-		for (let i = 0; i < model.count; ++i) {
-			const evCharger = model.deviceAt(i)
-			totalPower = Units.sumRealNumbers(totalPower, evCharger.power)
-			totalEnergy = Units.sumRealNumbers(totalEnergy, evCharger.energy)
-			if (model.count === 1) {
-				overallCurrent = evCharger.current
-			}
-			if (evCharger.position === VenusOS.AcPosition_AcInput) {
-				totalInputCount++
-				totalInputPower = Units.sumRealNumbers(totalInputPower, evCharger.power)
-			} else if (evCharger.position === VenusOS.AcPosition_AcOutput) {
-				totalOutputCount++
-				totalOutputPower = Units.sumRealNumbers(totalOutputPower, evCharger.power)
-			}
-		}
-		power = totalPower
-		current = overallCurrent
-		energy = totalEnergy
-		acInputPositionCount = totalInputCount
-		acInputPositionPower = totalInputPower
-		acOutputPositionCount = totalOutputCount
-		acOutputPositionPower = totalOutputPower
-	}
-
-	function reset() {
-		model.clear()
-		power = NaN
-	}
 
 	function chargerStatusToText(status) {
 		switch (status) {
@@ -184,13 +127,6 @@ QtObject {
 		default:
 			return ""
 		}
-	}
-
-	// Only update the totals periodically (and only when they change) to avoid excessive changes,
-	// especially on multi-phase systems.
-	readonly property Timer _measurementUpdates: Timer {
-		interval: 1000
-		onTriggered: root._doUpdateTotals()
 	}
 
 	Component.onCompleted: Global.evChargers = root

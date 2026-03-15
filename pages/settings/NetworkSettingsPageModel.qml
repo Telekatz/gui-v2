@@ -83,7 +83,7 @@ VisibleItemModel {
 
 	ListText {
 		text: CommonWords.state
-		secondaryText: Utils.connmanServiceState(networkServices.state)
+		secondaryText: Utils.connmanServiceState(networkServices.networkState)
 	}
 
 	ListText {
@@ -123,8 +123,21 @@ VisibleItemModel {
 		}
 	}
 
+	ListSwitch {
+		id: ethernetGatewayEnabled
+
+		//% "Allow using ethernet for internet access"
+		text: qsTrId("settings_tcpip_ethernet_gateway_enabled")
+		dataItem.uid: Global.venusPlatform.serviceUid + "/Network/Ethernet/GatewayEnabled"
+		preferredVisible: !networkServices.wifi
+		writeAccessLevel: VenusOS.User_AccessType_User
+		valueTrue: true
+		valueFalse: false
+	}
+
 	ListIpAddressField {
 		interactive: networkServices.manual
+		writeAccessLevel: VenusOS.User_AccessType_User
 		textField.text: networkServices.ipAddress
 		saveInput: function() { networkServices.setServiceProperty("Address", textField.text) }
 	}
@@ -133,6 +146,7 @@ VisibleItemModel {
 		//% "Netmask"
 		text: qsTrId("settings_tcpip_netmask")
 		interactive: method.userHasWriteAccess && networkServices.manual
+		writeAccessLevel: VenusOS.User_AccessType_User
 		textField.text: networkServices.netmask
 		saveInput: function() { networkServices.setServiceProperty("Netmask", textField.text) }
 	}
@@ -141,6 +155,8 @@ VisibleItemModel {
 		//% "Gateway"
 		text: qsTrId("settings_tcpip_gateway")
 		interactive: method.userHasWriteAccess && networkServices.manual
+		preferredVisible: networkServices.wifi || ethernetGatewayEnabled.checked
+		writeAccessLevel: VenusOS.User_AccessType_User
 		textField.text: networkServices.gateway
 		saveInput: function() { networkServices.setServiceProperty("Gateway", textField.text) }
 	}
@@ -149,8 +165,17 @@ VisibleItemModel {
 		//% "DNS server"
 		text: qsTrId("settings_tcpip_dns_server")
 		interactive: method.userHasWriteAccess && networkServices.manual
+		writeAccessLevel: VenusOS.User_AccessType_User
 		textField.text: networkServices.nameserver
 		saveInput: function() { networkServices.setServiceProperty("Nameserver", textField.text) }
+	}
+
+	ListSwitch {
+		//% "Enable Link-local"
+		text: qsTrId("settings_tcpip_ethernet_linklocal_enabled")
+		dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Services/EthernetLinkLocal"
+		preferredVisible: !networkServices.wifi
+		writeAccessLevel: VenusOS.User_AccessType_User
 	}
 
 	ListText {

@@ -5,7 +5,6 @@
 
 import QtQuick
 import Victron.VenusOS
-import QtQuick.Controls as C
 
 Page {
 	id: root
@@ -122,7 +121,7 @@ Page {
 				dataItem.uid: Global.system.serviceUid + "/AutoSelectedTemperatureService"
 				preferredVisible: sharedTempSense.checked
 					&& commonSettings.dvccActive
-					&& temperatureServiceRadioButtons.secondaryText === "default"
+					&& temperatureServiceRadioButtons.dataItem.value === "default"
 			}
 
 			ListSwitch {

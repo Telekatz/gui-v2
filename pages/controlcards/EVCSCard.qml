@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
 ControlCard {
@@ -51,6 +50,7 @@ ControlCard {
 			secondaryText: Global.evChargers.chargerModeToText(modeItem.value)
 			flat: true
 			interactive: modeItem.valid
+			writeAccessLevel: VenusOS.User_AccessType_User
 			onClicked: Global.dialogLayer.open(modeDialogComponent, { mode: modeItem.value })
 		}
 
@@ -58,27 +58,12 @@ ControlCard {
 			visible: modeListButton.visible
 		}
 
-		ListSpinBox {
+		ListEvcsSetCurrentSpinBox {
 			id: chargeCurrentSpinBox
 
-			text: CommonWords.charge_current
+			serviceUid: root.serviceUid
 			flat: true
-			suffix: Units.defaultUnitString(VenusOS.Units_Amp)
-			from: 0
-			stepSize: 1
-			dataItem.uid: root.serviceUid + "/SetCurrent"
-			preferredVisible: dataItem.valid
 			interactive: dataItem.valid && modeItem.value === VenusOS.Evcs_Mode_Manual
-
-			VeQuickItem {
-				id: maxCurrent
-				uid: root.serviceUid + "/MaxCurrent"
-				onValueChanged: {
-					if (valid) {
-						chargeCurrentSpinBox.to = value
-					}
-				}
-			}
 		}
 
 		FlatListItemSeparator {
@@ -89,6 +74,7 @@ ControlCard {
 			text: CommonWords.charging
 			flat: true
 			dataItem.uid: root.serviceUid + "/StartStop"
+			writeAccessLevel: VenusOS.User_AccessType_User
 			preferredVisible: dataItem.valid
 		}
 	}

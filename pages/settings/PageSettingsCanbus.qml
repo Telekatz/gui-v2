@@ -34,6 +34,11 @@ Page {
 		onValueChanged: if (value === 1) timer.running = false
 	}
 
+	VeQuickItem {
+		id: n2kOutEnabled
+		uid: root._vecanSettingsPrefix + "/N2kGatewayEnabled"
+	}
+
 	GradientListView {
 		model: VisibleItemModel {
 			ListRadioButtonGroup {
@@ -60,8 +65,28 @@ Page {
 			ListSwitch {
 				//% "NMEA2000-out"
 				text: qsTrId("settings_canbus_nmea2000out")
-				dataItem.uid: root._vecanSettingsPrefix + "/N2kGatewayEnabled"
-				preferredVisible: root._isVecan
+				valueTrue: 1
+				dataItem.value: n2kOutEnabled.value & valueTrue
+				preferredVisible: root._isVecan && n2kOutEnabled.valid
+				onClicked: n2kOutEnabled.setValue(checked ? (n2kOutEnabled.value & ~valueTrue) : (n2kOutEnabled.value | valueTrue))
+			}
+
+			ListSwitch {
+				//% "NMEA2000 outbound alerts"
+				text: qsTrId("settings_canbus_nmea2000out_alerts")
+				valueTrue: 2
+				dataItem.value: n2kOutEnabled.value & valueTrue
+				preferredVisible: root._isVecan && n2kOutEnabled.valid && n2kOutEnabled.value & 1
+				onClicked: n2kOutEnabled.setValue(checked ? (n2kOutEnabled.value & ~valueTrue) : (n2kOutEnabled.value | valueTrue))
+			}
+
+			ListSwitch {
+				//% "Reverse current polarity"
+				text: qsTrId("settings_canbus_rvc_reverse_current_polarity")
+				dataItem.uid: root._rvcSettingsPrefix + "/ReverseCurrent"
+				preferredVisible: root._isRvc && dataItem.valid
+				//% "When enabled, the current polarity in the CHARGER_AC_STATUS_1, CHARGER_STATUS_2, INVERTER_AC_STATUS_1, and SOLAR_CONTROLLER_BATTERY_STATUS DGNs is reversed."
+				caption: qsTrId("settings_canbus_rvc_reverse_current_polarity_description")
 			}
 
 			ListSpinBox {
@@ -155,8 +180,18 @@ Page {
 				text: CommonWords.network_status
 				onClicked: {
 					Global.pageManager.pushPage("/pages/settings/PageCanbusStatus.qml",
-						{ gateway: canbusProfile.gateway, title: root.title })
+						{ gateway: canbusProfile.gateway, title: CommonWords.network_status })
 				}
+			}
+
+			ListNavigation {
+				//% "CANopen motor drives"
+				text: qsTrId("pagesettingsintegrations_canopenmotordrive")
+				onClicked: {
+					Global.pageManager.pushPage("/pages/settings/PageSettingsCanOpenMotordrive.qml",
+						{ gateway: canbusProfile.gateway, title: text })
+				}
+				preferredVisible: canbusProfile.canbusProfile.value === VenusOS.CanBusProfile_CanOpenMotordrive250 || canbusProfile.canbusProfile.value === VenusOS.CanBusProfile_CanOpenMotordrive500
 			}
 		}
 	}

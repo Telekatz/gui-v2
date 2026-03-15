@@ -16,7 +16,7 @@ QtObject {
 			// It's hard to skip onboarding without touch, so disable onboarding if touch is disabled.
 			&& _touchEnabled.valid && _touchEnabled.value !== 0
 
-	property int electricalQuantity: VenusOS.Units_None
+	property int electricalPowerDisplay: VenusOS.ElectricalPowerDisplay_PreferWatts
 	property int temperatureUnit: VenusOS.Units_None
 	property string temperatureUnitSuffix
 	property int volumeUnit: VenusOS.Units_None
@@ -24,32 +24,63 @@ QtObject {
 	readonly property StartPageConfiguration startPageConfiguration: StartPageConfiguration {
 		systemSettingsUid: root.serviceUid
 	}
+
+	readonly property Ess ess: Ess {
+		systemSettingsUid: root.serviceUid
+	}
+
 	readonly property int speedUnit: {
 		switch (_speedUnit.value) {
-		case "km/h":
-			return VenusOS.Units_Speed_KilometersPerHour
-		case "m/s":
+		case _speedUnit.ve_kmh:
+			return VenusOS.Units_Speed_KilometresPerHour
+		case _speedUnit.ve_ms:
 			return VenusOS.Units_Speed_MetresPerSecond
-		case "kt":
+		case _speedUnit.ve_kt:
 			return VenusOS.Units_Speed_Knots
-		case "mph":
+		case _speedUnit.ve_mph:
 			return VenusOS.Units_Speed_MilesPerHour
 		default:
 			return VenusOS.Units_None
 		}
 	}
 
+	function toPreferredUnit(unitType) {
+		switch (unitType) {
+		case VenusOS.Units_Volume_CubicMetre:
+		case VenusOS.Units_Volume_Litre:
+		case VenusOS.Units_Volume_GallonImperial:
+		case VenusOS.Units_Volume_GallonUS:
+			return volumeUnit
+		case VenusOS.Units_Temperature_Kelvin:
+		case VenusOS.Units_Temperature_Celsius:
+		case VenusOS.Units_Temperature_Fahrenheit:
+			return temperatureUnit
+		case VenusOS.Units_Speed_KilometresPerHour:
+		case VenusOS.Units_Speed_MetresPerSecond:
+		case VenusOS.Units_Speed_Knots:
+		case VenusOS.Units_Speed_MilesPerHour:
+			return speedUnit
+		default:
+			return VenusOS.Units_None
+		}
+	}
+
+	readonly property bool animationEnabled: _animationEnabled.valid ? _animationEnabled.value : true
+
 	function canAccess(level) {
 		return accessLevel.valid && accessLevel.value >= level
 	}
 
-	function setElectricalQuantity(value) {
+	function setElectricalPowerDisplay(value) {
 		switch (value) {
-			case VenusOS.Units_Watt:
+			case VenusOS.ElectricalPowerDisplay_PreferWatts:
 				_electricalQuantity.setValue(_electricalQuantity.ve_watt)
 				break
-			case VenusOS.Units_Amp:
+			case VenusOS.ElectricalPowerDisplay_PreferAmps:
 				_electricalQuantity.setValue(_electricalQuantity.ve_amp)
+				break
+			case VenusOS.ElectricalPowerDisplay_Mixed:
+				_electricalQuantity.setValue(_electricalQuantity.ve_mixed)
 				break
 			default:
 				console.warn("setElectricalQuantity() unknown value:", value)
@@ -74,11 +105,11 @@ QtObject {
 
 	function setVolumeUnit(value) {
 		switch (value) {
-			case VenusOS.Units_Volume_CubicMeter:
+			case VenusOS.Units_Volume_CubicMetre:
 				_volumeUnit.setValue(_volumeUnit.ve_cm3)
 				break
-			case VenusOS.Units_Volume_Liter:
-				_volumeUnit.setValue(_volumeUnit.ve_liter)
+			case VenusOS.Units_Volume_Litre:
+				_volumeUnit.setValue(_volumeUnit.ve_litre)
 				break
 			case VenusOS.Units_Volume_GallonImperial:
 				_volumeUnit.setValue(_volumeUnit.ve_gallonImperial)
@@ -92,8 +123,32 @@ QtObject {
 		}
 	}
 
-	function convertFromCelsius(celsius_value) {
-		return Units.convert(celsius_value, VenusOS.Units_Temperature_Celsius, temperatureUnit)
+	function setSpeedUnit(value) {
+		switch (value) {
+			case VenusOS.Units_Speed_KilometresPerHour:
+				_speedUnit.setValue(_speedUnit.ve_kmh)
+				break
+			case VenusOS.Units_Speed_MetresPerSecond:
+				_speedUnit.setValue(_speedUnit.ve_ms)
+				break
+			case VenusOS.Units_Speed_Knots:
+				_speedUnit.setValue(_speedUnit.ve_kt)
+				break
+			case VenusOS.Units_Speed_MilesPerHour:
+				_speedUnit.setValue(_speedUnit.ve_mph)
+				break
+			default:
+				console.warn("setSpeedUnit() unknown value:", value)
+				break
+		}
+	}
+
+	function formatLatitude(latitude) {
+		return Units.formatLatitude(latitude, _gpsPositionFormat.value ?? 0)
+	}
+
+	function formatLongitude(longitude) {
+		return Units.formatLongitude(longitude, _gpsPositionFormat.value ?? 0)
 	}
 
 	function networkStatusToText(status) {
@@ -132,25 +187,72 @@ QtObject {
 	}
 
 	property VeQuickItem accessLevel: VeQuickItem {
-		 uid: root.serviceUid + "/Settings/System/AccessLevel"
+		uid: root.serviceUid + "/Settings/System/AccessLevel"
+	}
+
+	property VeQuickItem remoteConsoleColorMode: VeQuickItem {
+		uid: root.serviceUid + "/Settings/Gui/RemoteConsoleColorMode"
+		onValueChanged: {
+			// Check if remote console color mode was forced by command line or query parameter
+			if (Theme.forcedColorScheme === Theme.ForcedColorSchemeDefault) {
+				// Follow "/Settings/Gui/ColorScheme" if the remote console color mode is manual
+				if (value === VenusOS.RemoteConsoleColorMode_FollowDisplayMode) {
+					if (colorScheme.value === Theme.Dark) {
+						Theme.colorScheme = Theme.Dark
+					} else if (colorScheme.value === Theme.Light) {
+						Theme.colorScheme = Theme.Light
+					}
+				// Follow the client device color scheme if the platform is wasm and the remote console mode is auto
+				} else if (Qt.platform.os === "wasm" && value === VenusOS.RemoteConsoleColorMode_FollowSystemTheme) {
+					if (Theme.systemColorScheme === Theme.Dark) {
+						Theme.colorScheme = Theme.Dark
+					} else if (Theme.systemColorScheme === Theme.Light) {
+						Theme.colorScheme = Theme.Light
+					}
+				}
+			}
+		}
 	}
 
 	property VeQuickItem colorScheme: VeQuickItem {
-		 uid: root.serviceUid + "/Settings/Gui/ColorScheme"
-		 onValueChanged: {
-			 if (value === Theme.Dark) {
-				 Theme.colorScheme = Theme.Dark
-			 } else if (value === Theme.Light) {
-				 Theme.colorScheme = Theme.Light
-			 }
-		 }
+		uid: root.serviceUid + "/Settings/Gui/ColorScheme"
+		onValueChanged: {
+			// Check if remote console color mode was forced by command line or query parameter
+			if (Theme.forcedColorScheme === Theme.ForcedColorSchemeDefault) {
+				// Follow the color scheme if the platform is not wasm or the remote console mode is manual
+				if (Qt.platform.os !== "wasm" || !remoteConsoleColorMode.valid || remoteConsoleColorMode.value === VenusOS.RemoteConsoleColorMode_FollowDisplayMode) {
+					if (value === Theme.Dark) {
+						Theme.colorScheme = Theme.Dark
+					} else if (value === Theme.Light) {
+						Theme.colorScheme = Theme.Light
+					}
+				}
+			}
+		}
+	}
+
+	property VeQuickItem systemColorScheme: VeQuickItem {
+		value: Theme.systemColorScheme
+		onValueChanged: {
+			// Check if remote console color mode was forced by command line or query parameter
+			if (Theme.forcedColorScheme === Theme.ForcedColorSchemeDefault || Theme.forcedColorScheme === Theme.ForcedColorSchemeAuto) {
+				// Follow the client device color scheme if the platform is wasm and the remote console mode is auto or auto was forced
+				if ((Qt.platform.os === "wasm" && remoteConsoleColorMode.value === VenusOS.RemoteConsoleColorMode_FollowSystemTheme) || Theme.forcedColorScheme === Theme.ForcedColorSchemeAuto) {
+					if (value === Theme.Dark) {
+						Theme.colorScheme = Theme.Dark
+					} else if (value === Theme.Light) {
+						Theme.colorScheme = Theme.Light
+					}
+				}
+			}
+		}
 	}
 
 	property QtObject briefView: QtObject {
 		property var centralGauges: []
 
 		readonly property VeQuickItem unit: VeQuickItem {
-			 uid: root.serviceUid + "/Settings/Gui/BriefView/Unit"
+			uid: root.serviceUid + "/Settings/Gui/BriefView/Unit"
 		}
 
 		function _refreshCentralGauges() {
@@ -191,7 +293,8 @@ QtObject {
 				flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
 			}
 			delegate: VeQuickItem {
-				uid: model.uid
+				required property string id
+				uid: root.serviceUid + "/Settings/Gui2/BriefView/Level/" + id
 				onValueChanged: Qt.callLater(root.briefView._refreshCentralGauges)
 			}
 		}
@@ -210,7 +313,7 @@ QtObject {
 			interval: 60000
 			repeat: true
 			triggeredOnStart: true
-			running: BackendConnection.applicationVisible
+			running: BackendConnection.applicationVisible // even if !Global.timersEnabled, in case screen blank duration is short
 			onTriggered: root.time.getValue(true)   // force value refresh
 		}
 	}
@@ -247,19 +350,23 @@ QtObject {
 	property VeQuickItem _electricalQuantity: VeQuickItem {
 		readonly property int ve_watt: 0
 		readonly property int ve_amp: 1
+		readonly property int ve_mixed: 2
 
 		uid: root.serviceUid + "/Settings/Gui/ElectricalPowerIndicator"
 		onValueChanged: {
 			switch (value) {
 			case ve_watt:
-				root.electricalQuantity = VenusOS.Units_Watt
+				root.electricalPowerDisplay = VenusOS.ElectricalPowerDisplay_PreferWatts
 				break
 			case ve_amp:
-				root.electricalQuantity = VenusOS.Units_Amp
+				root.electricalPowerDisplay = VenusOS.ElectricalPowerDisplay_PreferAmps
+				break
+			case ve_mixed:
+				root.electricalPowerDisplay = VenusOS.ElectricalPowerDisplay_Mixed
 				break
 			default:
 				console.warn("Cannot load electrical quantity,", uid, "has unsupported value:", value, "default to watts")
-				root.electricalQuantity = VenusOS.Units_Watt
+				root.electricalPowerDisplay = VenusOS.ElectricalPowerDisplay_PreferWatts
 				break
 			}
 		}
@@ -290,25 +397,30 @@ QtObject {
 	}
 
 	property VeQuickItem _speedUnit: VeQuickItem {
-		uid: Global.systemSettings.serviceUid + "/Settings/Gps/SpeedUnit"
+		readonly property string ve_kmh: "km/h"
+		readonly property string ve_ms: "m/s"
+		readonly property string ve_kt: "kt"
+		readonly property string ve_mph: "mph"
+
+		uid: root.serviceUid + "/Settings/Gps/SpeedUnit"
 	}
 
 	property VeQuickItem _altitudeUnit: VeQuickItem {
-		readonly property string ve_meter: "meter"
+		readonly property string ve_metre: "meter"
 		readonly property string ve_foot: "foot"
 
 		uid: root.serviceUid + "/Settings/System/Units/Altitude"
 		onValueChanged: {
 			switch (value) {
-			case ve_meter:
-				root.altitudeUnit = VenusOS.Units_Altitude_Meter
+			case ve_metre:
+				root.altitudeUnit = VenusOS.Units_Altitude_Metre
 				break
 			case ve_foot:
 				root.altitudeUnit = VenusOS.Units_Altitude_Foot
 				break
 			default:
-				console.warn("Cannot load altitude unit,", uid, "has unsupported value:", value, "default to meter")
-				root.altitudeUnit = VenusOS.Units_Altitude_Meter
+				console.warn("Cannot load altitude unit,", uid, "has unsupported value:", value, "default to metre")
+				root.altitudeUnit = VenusOS.Units_Altitude_Metre
 				break
 			}
 		}
@@ -316,7 +428,7 @@ QtObject {
 
 	property VeQuickItem _volumeUnit: VeQuickItem {
 		readonly property int ve_cm3: 0
-		readonly property int ve_liter: 1
+		readonly property int ve_litre: 1
 		readonly property int ve_gallonImperial: 2
 		readonly property int ve_gallonUs: 3
 
@@ -324,10 +436,10 @@ QtObject {
 		onValueChanged: {
 			switch (value) {
 			case ve_cm3:
-				root.volumeUnit = VenusOS.Units_Volume_CubicMeter
+				root.volumeUnit = VenusOS.Units_Volume_CubicMetre
 				break
-			case ve_liter:
-				root.volumeUnit = VenusOS.Units_Volume_Liter
+			case ve_litre:
+				root.volumeUnit = VenusOS.Units_Volume_Litre
 				break
 			case ve_gallonImperial:
 				root.volumeUnit = VenusOS.Units_Volume_GallonImperial
@@ -337,7 +449,7 @@ QtObject {
 				break
 			default:
 				console.warn("Cannot load volume unit,", uid, "has unsupported value:", value, "default to m3")
-				root.volumeUnit = VenusOS.Units_Volume_CubicMeter
+				root.volumeUnit = VenusOS.Units_Volume_CubicMetre
 				break
 			}
 		}
@@ -365,6 +477,15 @@ QtObject {
 
 	readonly property VeQuickItem _touchEnabled: VeQuickItem {
 		uid: root.serviceUid + "/Settings/Gui/TouchEnabled"
+	}
+
+	// 0 = disabled, 1 = enabled; value is 1 by default.
+	readonly property VeQuickItem _animationEnabled: VeQuickItem {
+		uid: root.serviceUid + "/Settings/Gui2/UIAnimations"
+	}
+
+	readonly property VeQuickItem _gpsPositionFormat: VeQuickItem {
+		uid: Global.systemSettings.serviceUid + "/Settings/Gps/Format"
 	}
 
 	function reset() {

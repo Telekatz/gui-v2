@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls as C
 import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
@@ -25,11 +24,16 @@ FocusScope {
 	signal leftButtonClicked()
 	signal rightButtonClicked()
 	signal auxButtonClicked()
-	signal popToPage(toPage: Page)
+	// PageStack.get(...) returns an Item, so the arg for 'popToPage' needs to be 'Item'. If we make it a 'Page', it works fine on the desktop,
+	// but shows an unusual failure on the device. There is an error message about "passing incompatible arguments to signals is not supported",
+	// and the page stack pops 1 too many pages.
+	signal popToPage(toPage: Item)
 
 	width: parent.width
 	height: Theme.geometry_statusBar_height
-	opacity: 0
+	opacity: 0.0
+
+	Component.onCompleted: if (!animationEnabled) { root.opacity = 1.0 }
 
 	Rectangle {
 		id: backgroundRect
@@ -52,10 +56,10 @@ FocusScope {
 
 	component StatusBarButton : Button {
 		radius: 0
-		width: Theme.geometry_statusBar_button_height
-		height: Theme.geometry_statusBar_button_height
+		defaultBackgroundWidth: Theme.geometry_statusBar_button_height
+		defaultBackgroundHeight: Theme.geometry_statusBar_button_height
 		backgroundColor: "transparent"  // don't show background when disabled
-		display: C.AbstractButton.IconOnly
+		display: Button.IconOnly
 		color: Theme.color_ok
 		opacity: enabled && Global.pageManager?.interactivity === VenusOS.PageManager_InteractionMode_Interactive ? 1.0 : 0.0
 		onActiveFocusChanged: {
@@ -63,6 +67,14 @@ FocusScope {
 				breadcrumbs.updateFocusEdgeHint()
 			}
 		}
+
+		// For convenience, bind the paddings to the offsets that are used to expand the clickable
+		// area. If the button only contains an icon, no additional padding is required as the icon
+		// fits within the default defaultBackgroundWidth/Height.
+		leftPadding: leftInset
+		rightPadding: rightInset
+		topPadding: topInset
+		bottomPadding: bottomInset
 
 		Behavior on opacity {
 			enabled: root.animationEnabled
@@ -75,17 +87,13 @@ FocusScope {
 	component NotificationButton : Button {
 		readonly property bool animating: animator.running
 
-		leftPadding: Theme.geometry_silenceAlarmButton_horizontalPadding
-		rightPadding: Theme.geometry_silenceAlarmButton_horizontalPadding
-		height: Theme.geometry_notificationsPage_snoozeButton_height
-		radius: Theme.geometry_button_radius
 		opacity: enabled ? 1 : 0
 		font.family: Global.fontFamily
 		font.pixelSize: Theme.font_size_caption
 		Behavior on opacity {
+			enabled: root.animationEnabled
 			OpacityAnimator {
 				id: animator
-
 				duration: Theme.animation_toastNotification_fade_duration
 			}
 		}
@@ -94,11 +102,10 @@ FocusScope {
 	StatusBarButton {
 		id: leftButton
 
-		anchors {
-			left: parent.left
-			leftMargin: Theme.geometry_statusBar_horizontalMargin
-			verticalCenter: parent.verticalCenter
-		}
+		// Expand clickable area on left and bottom edges.
+		leftInset: Theme.geometry_statusBar_horizontalMargin
+		bottomInset: Theme.geometry_statusBar_spacing
+
 		icon.source: root.leftButton === VenusOS.StatusBar_LeftButton_ControlsInactive ? "qrc:/images/icon_controls_off_32.svg"
 			: root.leftButton === VenusOS.StatusBar_LeftButton_ControlsActive ? "qrc:/images/icon_controls_on_32.svg"
 			: root.leftButton === VenusOS.StatusBar_LeftButton_Back ? "qrc:/images/icon_back_32.svg"
@@ -115,11 +122,16 @@ FocusScope {
 		readonly property bool auxCardsOpened: Global.mainView.cardsActive
 				&& root.leftButton !== VenusOS.StatusBar_LeftButton_ControlsActive
 
+		// Expand clickable area on right and bottom edges, and on left if leftButton is hidden.
 		anchors {
 			left: leftButton.right
-			verticalCenter: parent.verticalCenter
+			leftMargin: -leftInset
 		}
-		visible: (root.pageStack.depth === 0 && Global.switches.groups.count > 0)
+		leftInset: leftButton.enabled ? 0 : Theme.geometry_statusBar_spacing
+		rightInset: Theme.geometry_statusBar_spacing
+		bottomInset: Theme.geometry_statusBar_spacing
+
+		visible: (!root.pageStack.opened && Global.switches.groups.count > 0)
 				|| auxCardsOpened // allow cards to be closed if all switches are disconnected while opened
 		icon.source: root.leftButton === VenusOS.StatusBar_LeftButton_ControlsActive ? ""
 				: auxCardsOpened ? "qrc:/images/icon_smartswitch_on_32.svg"
@@ -154,17 +166,16 @@ FocusScope {
 			left: leftButton.right
 			leftMargin: Theme.geometry_settings_breadcrumb_horizontalMargin
 			right: rightButtonRow.left
-			verticalCenter: leftButton.verticalCenter
 		}
 		height: Theme.geometry_settings_breadcrumb_height
-		model: root.pageStack.depth + 1 // '+ 1' because we insert a dummy breadcrumb with the text "Settings"
+		model: root.pageStack.opened ? root.pageStack.depth + 1 : null // '+ 1' because we insert a dummy breadcrumb with the text "Settings"
 		visible: count >= 2
 		enabled: visible // don't receive focus when invisble
 		focus: false // don't give status bar initial focus to the breadcrumbs
 
 		getText: function(index) {
 			return index === 0
-					? Global.pageManager.navBar.activeButtonText // eg: "Settings"
+					? Global.mainView.navBar.activeButtonText // eg: "Settings"
 					: pageStack.get(index - 1).title // eg: "Device list"
 		}
 
@@ -193,11 +204,11 @@ FocusScope {
 			}
 		}
 
-		KeyNavigation.right: alarmButton
+		KeyNavigation.right: notificationButton
 
 		Connections {
 			target: root.pageStack
-			enabled: Global.keyNavigationEnabled
+			enabled: root.pageStack.opened && Global.keyNavigationEnabled
 			function onDepthChanged() {
 				// When pages are pushed/popped, reset the focus to be on the last breadcrumb.
 				breadcrumbs.currentIndex = breadcrumbs.count - 1
@@ -218,11 +229,11 @@ FocusScope {
 
 		anchors {
 			left: clockLabel.right
-			leftMargin: Theme.geometry_statusBar_rightSideRow_horizontalMargin
+			leftMargin: Theme.geometry_statusBar_spacing
 			verticalCenter: parent.verticalCenter
 		}
 		visible: !breadcrumbs.visible
-		spacing: Theme.geometry_statusBar_rightSideRow_horizontalMargin
+		spacing: Theme.geometry_statusBar_spacing
 
 		CP.IconImage {
 			anchors.verticalCenter: parent.verticalCenter
@@ -254,62 +265,74 @@ FocusScope {
 			height: Theme.geometry_status_bar_gsmModem_icon_height
 			anchors.verticalCenter: parent.verticalCenter
 		}
-
-		CP.IconImage {
-			id: notificationIcon
-
-			anchors.verticalCenter: parent.verticalCenter
-			visible: Global.notifications?.statusBarNotificationIconVisible ?? false
-			color: Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Alarm
-				   ? Theme.color_critical
-				   : Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Warning
-					 ? Theme.color_warning :
-					   Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Info ? Theme.color_ok : notificationIcon.color
-			source: Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Info ?
-						"qrc:/images/icon_info_32.svg" : "qrc:/images/icon_warning_32.svg"
-		}
 	}
 
-	Row {
-		id: rightSideRow
+	StatusBarButton {
+		id: notificationButton
+
 		anchors {
-			right: rightButtonRow.left
-			rightMargin: Theme.geometry_statusBar_rightSideRow_horizontalMargin
-			verticalCenter: parent.verticalCenter
+			left: connectivityRow.right
+			leftMargin: Theme.geometry_statusBar_spacing
 		}
-		width: Math.max(20, implicitWidth)
+		// Expand clickable area on right and bottom edges.
+		rightInset: Theme.geometry_statusBar_spacing / 2
+		bottomInset: Theme.geometry_statusBar_spacing
+
+		// The notificationButton should always be shown, even when the page is not interactive
+		opacity: 1
+		visible: !breadcrumbs.visible && (Global.notifications?.statusBarNotificationIconVisible ?? false)
+
+		color: Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Alarm
+			   ? Theme.color_critical
+			   : Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Warning
+				 ? Theme.color_warning :
+				   Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Info ? Theme.color_ok : "transparent"
+		icon.source: Global.notifications?.statusBarNotificationIconPriority === VenusOS.Notification_Info ?
+						 "qrc:/images/icon_info_32.svg" : "qrc:/images/icon_warning_32.svg"
+		onClicked: Global.mainView.goToNotificationsPage()
+		KeyNavigation.right: alarmButton
 	}
 
 	NotificationButton {
 		id: alarmButton
 
 		anchors {
-			right: rightSideRow.right
+			left: notificationButton.right
 			verticalCenter: parent.verticalCenter
 		}
+		// Expand clickable area on horizontal and bottom edges.
+		leftInset: Theme.geometry_statusBar_spacing / 2
+		leftPadding: leftInset + Theme.geometry_silenceAlarmButton_horizontalPadding
+		rightInset: Theme.geometry_statusBar_spacing / 2
+		rightPadding: rightInset + Theme.geometry_silenceAlarmButton_horizontalPadding
+		topInset: Theme.geometry_statusBar_spacing
+		bottomInset: Theme.geometry_statusBar_spacing
+
 		enabled: notificationButtonsEnabled && (Global.notifications?.silenceAlarmVisible ?? false)
-		backgroundColor: Theme.color_critical_background
-		downColor: Theme.color_critical
-		highlightMargins: -(4 * Theme.geometry_button_border_width) // ensure highlight border can be seen against critical backgroundColor
+		flat: false
+		backgroundColor: down ? Theme.color_critical : Theme.color_critical_background
+		borderWidth: 0
+		// ensure highlight border can be seen against critical backgroundColor
+		KeyNavigationHighlight.margins: -(4 * Theme.geometry_button_border_width)
 		icon.source: "qrc:/images/icon_alarm_snooze_24.svg"
+		text: CommonWords.silence_alarm
 
-		//% "Silence alarm"
-		text: qsTrId("notifications_silence_alarm")
-
-		onClicked: Global.notifications.acknowledgeAll()
+		onClicked: NotificationModel.acknowledgeAll()
 	}
 
 	Row {
 		id: rightButtonRow
 
 		height: parent.height
-		anchors {
-			right: parent.right
-			rightMargin: Theme.geometry_statusBar_horizontalMargin
-		}
+		anchors.right: parent.right
 
 		StatusBarButton {
 			id: rightButton
+
+			// Expand clickable area on left and bottom edges.
+			leftInset: Theme.geometry_statusBar_spacing
+			bottomInset: Theme.geometry_statusBar_spacing
+
 			enabled: root.rightButton != VenusOS.StatusBar_RightButton_None
 			visible: enabled
 			icon.source: root.rightButton === VenusOS.StatusBar_RightButton_SidePanelActive
@@ -329,12 +352,20 @@ FocusScope {
 
 		StatusBarButton {
 			id: sleepButton
+
+			// Expand clickable area on right and bottom edges, and on left edge if right button is
+			// hidden. This is the right-most button in the row, so on the right edge, use
+			// Theme.geometry_statusBar_horizontalMargin instead of Theme.geometry_statusBar_spacing.
+			leftInset: rightButton.visible ? 0 : Theme.geometry_statusBar_spacing
+			rightInset: Theme.geometry_statusBar_horizontalMargin
+			bottomInset: Theme.geometry_statusBar_spacing
+
 			icon.source: "qrc:/images/icon_screen_sleep_32.svg"
 			visible: enabled
-			enabled: Global.screenBlanker?.supported
-					&& Global.screenBlanker?.enabled
+			enabled: ScreenBlanker.supported
+					&& ScreenBlanker.enabled
 					&& Global.pageManager?.interactivity === VenusOS.PageManager_InteractionMode_Interactive
-			onClicked: Global.screenBlanker.setDisplayOff()
+			onClicked: ScreenBlanker.setDisplayOff()
 		}
 	}
 
@@ -346,7 +377,7 @@ FocusScope {
 		enabled: Global.keyNavigationEnabled
 		function onActiveFocusItemChanged() {
 			if (Global.main.activeFocusItem === root) {
-				for (const button of [leftButton, auxButton, breadcrumbs, alarmButton, rightButton, sleepButton]) {
+				for (const button of [leftButton, auxButton, breadcrumbs, notificationButton, alarmButton, rightButton, sleepButton]) {
 					if (button.enabled) {
 						button.focus = true
 						break

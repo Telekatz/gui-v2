@@ -25,7 +25,6 @@ Page {
 	// The cards list view is made up of:
 	// - Header - ESS card
 	// - Per-device Control Cards for EVCS, Generators, Inverter/chargers
-	// - Footer - Manual relays
 	BaseListView {
 		id: cardsView
 
@@ -37,13 +36,22 @@ Page {
 		spacing: Theme.geometry_controlCardsPage_spacing
 		orientation: ListView.Horizontal
 
+		// When using key navigation to scroll through the control cards, use a velocity that
+		// roughly matches the velocity produced by AuxCardsPage scrollToControl() when it scrolls
+		// through the Switch Pane.
+		// Note that the control cards do not need a scrollToControl() function, as these cards
+		// always fit within a single screen, so it can rely on the ListView auto-scroll behaviour
+		// that moves to the start of each card.
+		highlightMoveVelocity: Theme.animation_cards_highlightMoveVelocity
+		highlightMoveDuration: -1
+
 		header: BaseListLoader {
 			active: systemType.value === "ESS" || systemType.value === "Hub-4"
 			sourceComponent: BaseListItem {
 				width: root.cardWidth + cardsView.spacing
 				height: cardsView.height
 				background.visible: false
-				navigationHighlight.visible: false
+				KeyNavigationHighlight.active: false
 
 				ESSCard {
 					width: root.cardWidth
@@ -57,25 +65,6 @@ Page {
 			}
 		}
 
-		footer: BaseListLoader {
-			active: manualRelays.count > 0
-			sourceComponent: BaseListItem {
-				width: root.cardWidth + cardsView.spacing
-				height: cardsView.height
-				background.visible: false
-				navigationHighlight.visible: false
-
-				SwitchesCard {
-					x: cardsView.spacing
-					width: root.cardWidth
-					height: cardsView.height
-					model: manualRelays
-				}
-			}
-
-			ManualRelayModel { id: manualRelays }
-		}
-
 		model: controlCardModel
 		delegate: BaseListLoader {
 			id: deviceDelegate
@@ -85,10 +74,9 @@ Page {
 			width: root.cardWidth
 			height: cardsView.height
 			sourceComponent: {
-				const serviceType = BackendConnection.serviceTypeFromUid(device.serviceUid)
-				if (serviceType === "evcharger") {
+				if (device.serviceType === "evcharger") {
 					return evcsComponent
-				} else if (serviceType === "generator") {
+				} else if (device.serviceType === "generator") {
 					return generatorComponent
 				}
 				return inverterChargerComponent
@@ -124,73 +112,43 @@ Page {
 		}
 	}
 
-	AggregateDeviceModel {
+	FilteredDeviceModel {
 		id: controlCardModel
-
-		sortBy: AggregateDeviceModel.SortBySourceModel | AggregateDeviceModel.SortByDeviceName
-		sourceModels: [
-			evChargerModel,
-			generatorModel,
-			Global.inverterChargers.veBusDevices,
-			Global.inverterChargers.acSystemDevices,
-			Global.inverterChargers.inverterDevices
-		]
-	}
-
-	// A model of evcharger services that represent controllable EV chargers, i.e. those with a
-	// valid /Mode value. Global.evChargers.model cannot be used in the control cards, as it
-	// includes services without a /Mode, such as Energy Meters configured as EV chargers.
-	ServiceDeviceModel {
-		id: evChargerModel
-
-		serviceType: "evcharger"
-		modelId: "evcharger"
-		deviceDelegate: Device {
-			id: device
-
-			required property string uid
-			readonly property bool isRealCharger: valid && _chargerMode.valid
-
-			readonly property VeQuickItem _chargerMode: VeQuickItem {
-				uid: device.serviceUid + "/Mode"
-			}
-
-			serviceUid: uid
-			onIsRealChargerChanged: {
-				if (isRealCharger) {
-					evChargerModel.addDevice(device)
-				} else {
-					evChargerModel.removeDevice(device.serviceUid)
-				}
+		sorting: FilteredDeviceModel.ServiceTypeOrder | FilteredDeviceModel.Name
+		serviceTypes: [ "evcharger", "generator", "vebus", "acsystem", "inverter" ]
+		childFilterIds: { "evcharger": ["Mode"], "generator": ["Enabled"] }
+		childFilterFunction: (device, childItems) => {
+			if (device.serviceType === "evcharger") {
+				// Only include EV chargers that represent controllable EV chargers (with valid
+				// /Mode values), to prevent Energy Meters from appearing in the cards.
+				return childItems["Mode"]?.value !== undefined
+			} else if (device.serviceType === "generator") {
+				// Only include generators with /Enabled=1, which means they have the startstop1
+				// for starting/stopping the generator.
+				return childItems["Enabled"]?.value === 1
+			} else {
+				return true
 			}
 		}
 	}
 
-	// A model of generator services with /Enabled=1, i.e. those that have the startstop1 feature
-	// for starting/stopping the generator.
-	ServiceDeviceModel {
-		id: generatorModel
-
-		serviceType: "generator"
-		modelId: "generator"
-		deviceDelegate: Device {
-			id: generatorDevice
-
-			required property string uid
-			readonly property bool controllable: valid && _enabled.valid && _enabled.value === 1
-
-			readonly property VeQuickItem _enabled: VeQuickItem {
-				uid: generatorDevice.serviceUid + "/Enabled"
-			}
-
-			serviceUid: uid
-			onControllableChanged: {
-				if (controllable) {
-					generatorModel.addDevice(generatorDevice)
-				} else {
-					generatorModel.removeDevice(generatorDevice.serviceUid)
-				}
-			}
+	Loader {
+		id: emptyPageLoader
+		anchors {
+			fill: parent
+			leftMargin: Theme.geometry_page_content_horizontalMargin
+			rightMargin: Theme.geometry_page_content_horizontalMargin
+		}
+		active: cardsView.count === 0 && !cardsView.headerItem.active
+		sourceComponent: EmptyPageItem {
+			//% "Controls"
+			titleText: qsTrId("controlcards_empty_title")
+			//% "No compatible devices found"
+			primaryText: qsTrId("controlcards_empty_desc1")
+			//% "Connect devices that support this function"
+			secondaryText: qsTrId("controlcards_empty_desc2")
+			imageSource: "qrc:/images/controlcards-no-devices.svg"
+			imageColor: Theme.color_emptyPageItem_logo
 		}
 	}
 }

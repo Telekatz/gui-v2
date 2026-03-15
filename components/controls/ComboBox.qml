@@ -4,16 +4,22 @@
 */
 
 import QtQuick
-import QtQuick.Templates as CT
-import QtQuick.Controls as C
+import QtQuick.Templates as T
 import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
-CT.ComboBox {
+T.ComboBox {
 	id: root
 
-	implicitWidth: contentItem.implicitWidth + root.leftPadding + root.rightPadding
-	implicitHeight: Theme.geometry_comboBox_height
+	property real defaultBackgroundWidth: Theme.geometry_comboBox_width
+	property real defaultBackgroundHeight: Theme.geometry_button_height
+
+	implicitWidth: Math.max(
+		implicitBackgroundWidth + leftInset + rightInset,
+		implicitContentWidth + leftPadding + rightPadding)
+	implicitHeight: Math.max(
+		implicitBackgroundHeight + topInset + bottomInset,
+		implicitContentHeight + topPadding + bottomPadding)
 
 	leftPadding: Theme.geometry_comboBox_leftPadding
 	rightPadding: Theme.geometry_comboBox_rightPadding
@@ -21,45 +27,34 @@ CT.ComboBox {
 	bottomPadding: Theme.geometry_comboBox_verticalPadding
 	spacing: Theme.geometry_comboBox_spacing
 
-	delegate: CT.ItemDelegate {
+	delegate: T.ItemDelegate {
 		id: optionDelegate
 
-		width: root.width
-		height: Theme.geometry_comboBox_height
-		highlighted: root.highlightedIndex === index
+		width: root.defaultBackgroundWidth
+		height: root.defaultBackgroundHeight
+		highlighted: root.highlightedIndex === index || pressed
 
 		contentItem: Rectangle {
 			anchors.fill: parent
-			radius: Theme.geometry_button_radius
-			color: optionDelegate.pressed ? Theme.color_ok : "transparent"
+			topLeftRadius: index === 0 ? Theme.geometry_button_radius : 0
+			topRightRadius: index === 0 ? Theme.geometry_button_radius : 0
+			bottomLeftRadius: index === root.count - 1 ? Theme.geometry_button_radius : 0
+			bottomRightRadius: index === root.count - 1 ? Theme.geometry_button_radius : 0
+			color: optionDelegate.highlighted ? Theme.color_ok : "transparent"
 
 			Label {
 				anchors.fill: parent
-				leftPadding: root.leftPadding
-				rightPadding: root.leftPadding  // no indicator here, use same padding as left side
+				leftPadding: Theme.geometry_comboBox_leftPadding
+				rightPadding: Theme.geometry_comboBox_leftPadding  // no indicator here, use same padding as left side
 				font.pixelSize: Theme.font_size_body1
 				verticalAlignment: Text.AlignVCenter
 				elide: Text.ElideRight
 				text: modelData.text
-				color: optionDelegate.pressed ? Theme.color_button_down_text : Theme.color_font_primary
-			}
-
-			CP.ColorImage {
-				anchors {
-					right: parent.right
-					rightMargin: 8
-					verticalCenter: parent.verticalCenter
-				}
-				source: "qrc:/images/icon_checkmark_32.svg"
-				color: optionDelegate.pressed ? Theme.color_button_down_text : Theme.color_ok
-				visible: root.currentIndex === index
+				color: optionDelegate.highlighted ? Theme.color_button_down_text : Theme.color_font_primary
 			}
 		}
 
-		KeyNavigationHighlight {
-			anchors.fill: parent
-			active: parent.ListView.isCurrentItem
-		}
+		KeyNavigationHighlight.active: ListView.isCurrentItem
 	}
 
 	indicator: CP.ColorImage {
@@ -69,7 +64,9 @@ CT.ComboBox {
 		y: root.topPadding + (root.availableHeight - height) / 2
 		source: "qrc:/images/icon_arrow_32.svg"
 		rotation: 270
-		color: root.pressed ? Theme.color_primary : Theme.color_ok
+		color: root.enabled
+			   ? (root.pressed ? Theme.color_primary : Theme.color_ok)
+			   : Theme.color_font_disabled
 	}
 
 	contentItem: Label {
@@ -79,26 +76,38 @@ CT.ComboBox {
 		verticalAlignment: Text.AlignVCenter
 		elide: Text.ElideRight
 		text: root.displayText
-		color: root.pressed ? Theme.color_button_down_text : Theme.color_font_primary
+		color: root.enabled
+			   ? (root.pressed ? Theme.color_button_down_text : Theme.color_font_primary)
+			   : Theme.color_font_disabled
 	}
 
 	background: Rectangle {
-		border.color: Theme.color_ok
+		implicitWidth: root.defaultBackgroundWidth
+		implicitHeight: root.defaultBackgroundHeight
+		border.color: root.enabled ? Theme.color_ok : Theme.color_font_disabled
 		border.width: Theme.geometry_button_border_width
 		radius: Theme.geometry_button_radius
-		color: root.pressed ? Theme.color_ok : Theme.color_darkOk
+		color: root.enabled
+			   ? (root.pressed ? Theme.color_ok : Theme.color_darkOk)
+			   : Theme.color_background_disabled
 	}
 
-	popup: CT.Popup {
-		width: root.width
+	popup: T.Popup {
+		x: root.leftInset
+		implicitWidth: root.defaultBackgroundWidth
 		implicitHeight: contentItem.implicitHeight
 
 		contentItem: ListView {
 			clip: true
-			interactive: false
-			implicitHeight: contentHeight
+			implicitHeight: Math.min(contentHeight, Global.mainView.height - (2 * Theme.geometry_comboBox_verticalPadding))
+			boundsBehavior: Flickable.StopAtBounds
 			model: root.popup.visible ? root.delegateModel : null
 			currentIndex: root.highlightedIndex
+
+			ScrollBar.vertical: ScrollBar {
+				topPadding: Theme.geometry_comboBox_verticalPadding
+				bottomPadding: Theme.geometry_comboBox_verticalPadding
+			}
 		}
 
 		background: Rectangle {
@@ -112,17 +121,30 @@ CT.ComboBox {
 			Rectangle {
 				anchors.fill: parent
 				radius: Theme.geometry_button_radius
+				border.width: Theme.geometry_button_border_width
+				border.color: Theme.color_ok
 				color: Theme.color_darkOk
 			}
 		}
 
-		// Workaround for QTBUG-121029 (popup does not open as popup visible=true even when closed)
-		function _updateVisibility() { visible = opened }
-		onOpenedChanged: Qt.callLater(_updateVisibility)
+		onAboutToShow: {
+			// Prefer to show popup in a position where the current selection is shown over the top
+			// of the combo box.
+			y = root.topInset - (root.currentIndex * root.defaultBackgroundHeight)
+
+			// If the popup would be shown with the top edge above the top of the main view, move
+			// it downwards.
+			const posInWindow = mapToItem(Global.mainView, 0, y)
+			if (posInWindow.y < Theme.geometry_comboBox_verticalPadding) {
+				y = mapFromItem(Global.mainView, 0, Theme.geometry_comboBox_verticalPadding).y
+			}
+		}
 	}
 
-	KeyNavigationHighlight {
-		anchors.fill: parent
-		active: root.activeFocus
-	}
+	Keys.enabled: Global.keyNavigationEnabled
+	KeyNavigationHighlight.active: root.activeFocus
+	KeyNavigationHighlight.topMargin: root.topInset
+	KeyNavigationHighlight.bottomMargin: root.bottomInset
+	KeyNavigationHighlight.leftMargin: root.leftInset
+	KeyNavigationHighlight.rightMargin: root.rightInset
 }

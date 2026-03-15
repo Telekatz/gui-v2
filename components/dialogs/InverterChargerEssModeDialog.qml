@@ -28,11 +28,11 @@ ModalDialog {
 
 		SettingsColumn {
 			id: contentColumn
-			anchors.fill: parent
+			width: parent.width
 
 			Repeater {
 				id: repeater
-				model: Global.ess.stateModel
+				model: Global.systemSettings.ess.stateModel
 				delegate: SettingsColumn {
 					width: parent.width
 

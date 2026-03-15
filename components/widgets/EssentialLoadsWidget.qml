@@ -19,13 +19,29 @@ AcWidget {
 		model: Global.system.load.acOut.phases
 		widgetSize: root.size
 		valueType: VenusOS.Gauges_ValueType_RisingPercentage
-		phaseModelProperty: "current"
 		maximumValue: Global.system.load.maximumAcCurrent
 	}
 	extraContentLoader.active: root.phaseCount > 1 || Global.system.load.acOut.l2AndL1OutSummed
 
-	// Heat pumps with Position=0 (AC output) are considered as "Essential Loads", so they are
+	// AC meters with Position=0 (AC output) are considered as "Essential Loads", so they are
 	// accessible from this AC Loads widget.
-	enabled: Global.allDevicesModel.heatPumpOutputDevices.count > 0
-	onClicked: openDevicePageOrList(Global.allDevicesModel.heatPumpOutputDevices)
+	// For 3-phase systems, the drilldown is always enabled.
+	// For 1-phase systems, only enable the drilldown if there are devices to be shown.
+	enabled: Global.system.load.acOut.phaseCount > 1 || essentialLoadDevices.count > 0
+	onClicked: {
+		Global.pageManager.pushPage("/pages/loads/AcLoadListPage.qml", {
+			title: root.title,
+			measurements: Global.system.load.acOut,
+			model: essentialLoadDevices
+		})
+	}
+
+	FilteredDeviceModel {
+		id: essentialLoadDevices
+		serviceTypes: ["acload", "evcharger", "heatpump"]
+		childFilterIds: { "acload": ["Position"], "evcharger": ["Position"], "heatpump": ["Position"] }
+		childFilterFunction: (device, childItems) => {
+			return childItems["Position"]?.value === VenusOS.AcPosition_AcOutput
+		}
+	 }
 }

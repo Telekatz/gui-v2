@@ -16,9 +16,9 @@ AcWidget {
 	title: !!inputInfo ? Global.acInputs.sourceToText(inputInfo.source) : ""
 	icon.source: !!inputInfo ? Global.acInputs.sourceIcon(inputInfo.source) : ""
 	rightPadding: sideGaugeLoader.active ? Theme.geometry_overviewPage_widget_sideGauge_margins : 0
+	quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_AcInputOnly
 	quantityLabel.dataObject: inputOperational ? input : null
 	quantityLabel.leftPadding: acInputDirectionIcon.visible ? (acInputDirectionIcon.width + Theme.geometry_acInputDirectionIcon_rightMargin) : 0
-	quantityLabel.acInputMode: true
 	phaseCount: inputOperational ? input.phases.count : 0
 	enabled: !!inputInfo
 	extraContentLoader.sourceComponent: ThreePhaseDisplay {
@@ -37,8 +37,12 @@ AcWidget {
 			Global.pageManager.pushPage( "/pages/vebusdevice/PageVeBus.qml", {
 				"bindPrefix": inputServiceUid
 			})
+		} else if (root.inputInfo.serviceType === "genset") {
+			Global.pageManager.pushPage( "/pages/settings/devicelist/PageGenset.qml", {
+				"bindPrefix": inputServiceUid
+			})
 		} else {
-			// Assume this is on a grid/genset service
+			// Assume this is on a generic AC input
 			Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageAcIn.qml", {
 				"bindPrefix": inputServiceUid
 			})
@@ -58,7 +62,6 @@ AcWidget {
 		sourceComponent: ThreePhaseBarGauge {
 			valueType: VenusOS.Gauges_ValueType_NeutralPercentage
 			phaseModel: root.input.phases
-			phaseModelProperty: "current"
 			minimumValue: root.inputInfo?.minimumCurrent ?? NaN
 			maximumValue: root.inputInfo?.maximumCurrent ?? NaN
 			inputMode: true

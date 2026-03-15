@@ -9,21 +9,9 @@ import Victron.VenusOS
 QtObject {
 	id: root
 
-	property DeviceModel model: DeviceModel {
-		modelId: "generators"
-		sortBy: BaseDeviceModel.SortByDeviceInstance
-	}
-
-	function addGenerator(generator) {
-		model.addDevice(generator)
-	}
-
-	function removeGenerator(generator) {
-		model.removeDevice(generator.serviceUid)
-	}
-
-	function reset() {
-		model.clear()
+	readonly property FilteredDeviceModel model: FilteredDeviceModel {
+		serviceTypes: ["generator"]
+		sorting: FilteredDeviceModel.DeviceInstance
 	}
 
 	function stateAndCondition(state, conditionCode) {

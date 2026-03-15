@@ -10,9 +10,9 @@ const SECONDS_PER_HOUR = 3600
 const SECONDS_PER_MINUTE = 60
 const MS_PER_MINUTE = 60000
 const MINUTES_PER_HOUR = 60
-const METERS_PER_KILOMETER = 1000
-const METERS_PER_MILE = 1609.34
-const METERS_PER_NAUTICAL_MILE = 1852
+const METRES_PER_KILOMETRE = 1000
+const METRES_PER_MILE = 1609.34
+const METRES_PER_NAUTICAL_MILE = 1852
 
 function arrayCompare(lhs, rhs) {
 	if (!Array.isArray(lhs)) {
@@ -98,7 +98,7 @@ function formatAsHHMM(seconds, showUnits) {
 	return pad(duration.h, 2)
 			+ (showUnits ? "h " : ":")
 			+ pad(duration.m, 2)
-			+ (showUnits ? "m " : "")
+			+ (showUnits ? "m" : "")
 }
 
 function formatAsHHMMSS(seconds, showUnits) {
@@ -272,7 +272,10 @@ function formatTimestamp(dateTime, currentDateTime) {
 	if (days < 7) {
 		return dateTime.toLocaleString(Qt.locale(), "ddd hh:mm") // eg. "Mon 09:06"
 	}
-	return dateTime.toLocaleString(Qt.locale(), "MMM dd hh:mm") // eg. "Mar 27 10:20"
+	if (dateTime.getFullYear() === currentDateTime.getFullYear()) {
+		return dateTime.toLocaleString(Qt.locale(), "MMM dd hh:mm") // eg. "Mar 27 10:20"
+	}
+	return dateTime.toLocaleString(Qt.locale(), "MMM dd yyyy hh:mm") // eg. "Mar 27 2025 10:20"
 }
 
 function connmanServiceState(state) {
@@ -368,7 +371,6 @@ function validationResult(status, notificationText = "", adjustedText = undefine
 
 function acceptsKeyNavigation(item) {
 	return !!item
-			&& item.activeFocusOnTab
+			&& (item.focusPolicy & 0x1) // 0x1 = Qt.TabFocus
 			&& item.enabled
-			&& item.effectiveVisible !== false  // use !== to allow item that do not have effectiveVisible property
 }

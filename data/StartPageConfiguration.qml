@@ -11,9 +11,10 @@ QtObject {
 
 	required property string systemSettingsUid
 
-	readonly property bool hasStartPage: _startPageName.valid && _startPageName.value !== ""
+	readonly property bool hasStartPage: _startPageNameConfig != null
 	readonly property bool autoSelect: _startPageMode.value === VenusOS.StartPage_Mode_AutoSelect
 	readonly property int startPageTimeout: _startPageTimeout.value || 0     // in seconds
+	readonly property var startPageInfo: _startPageNameConfig
 
 	readonly property var options: [
 		{
@@ -49,55 +50,25 @@ QtObject {
 			value: _jsonStringForType(VenusOS.StartPage_Type_Levels_Environment),
 		},
 		{
+			display: CommonWords.notifications,
+			value: _jsonStringForType(VenusOS.StartPage_Type_Notifications),
+		},
+		{
 			//% "Battery list"
-			display: qsTrId("startpage_option_battery list"),
+			display: qsTrId("startpage_option_battery_list"),
 			value: _jsonStringForType(VenusOS.StartPage_Type_BatteryList),
+		},
+		{
+			//% "Device list"
+			display: qsTrId("startpage_option_device_list"),
+			value: _jsonStringForType(VenusOS.StartPage_Type_DeviceList),
 		},
 	]
 
-	// Changes the application view to show the start page.
-	function loadStartPage(swipeView, stackPageUrls) {
-		if (!hasStartPage) {
-			return
-		}
-
-		let config
-		try {
-			config = JSON.parse(_startPageName.value)
-		} catch (e) {
-			console.warn("Unable to parse JSON from:", _startPageName.value, ", exception:", e)
-			return
-		}
-
-		// Load the main page and its properties
-		if (!config.main || !Global.pageManager.navBar.setCurrentPage(config.main.page)) {
-			return
-		}
-		const mainPage = swipeView.getCurrentPage()
-		for (const propertyName in config.main.properties) {
-			if (mainPage.hasOwnProperty(propertyName)) {
-				mainPage[propertyName] = config.main.properties[propertyName]
-			}
-		}
-
-		// Load the required pages onto the stack
-		const stackPages = config.stack || []
-		if (stackPages.length > 0
-				&& stackPageUrls.length > 0
-				&& stackPages[stackPages.length - 1].page === stackPageUrls[stackPageUrls.length - 1]) {
-			// Looks like the stack is already showing the correct page, so there's nothing to do.
-			return
-		}
-		Global.pageManager.popAllPages(PageStack.Immediate)
-		for (let i = 0; i < stackPages.length; ++i) {
-			if (stackPages[i].page) {
-				Global.pageManager.pushPage(stackPages[i].page, stackPages[i].properties || {})
-			}
-		}
-	}
+	property var _startPageNameConfig
 
 	// Changes the "start page" to be the current visible page, if possible.
-	function autoSelectStartPage(mainPageName, mainPage, stackPageUrls) {
+	function autoSelectStartPage(mainPageName, mainPage, topStackPageUrl) {
 		if (!autoSelect) {
 			return
 		}
@@ -105,7 +76,7 @@ QtObject {
 			console.warn("autoSelect() failed: mainPageName or mainPage not set")
 			return
 		}
-		const startPageType = _findStartPageTypeForView(mainPageName, mainPage, stackPageUrls)
+		const startPageType = _findStartPageTypeForView(mainPageName, mainPage, topStackPageUrl)
 		if (startPageType >= 0) {
 			_startPageName.setValue(_jsonStringForType(startPageType))
 		}
@@ -143,10 +114,20 @@ QtObject {
 				main: { page: "LevelsPage.qml", properties: { currentTabIndex: 1 } },
 				stack: [],
 			})
+		case VenusOS.StartPage_Type_Notifications:
+			return JSON.stringify({
+				main: { page: "NotificationsPage.qml", properties: {} },
+				stack: [],
+			})
 		case VenusOS.StartPage_Type_BatteryList:
 			return JSON.stringify({
 				main: { page: "OverviewPage.qml", properties: {} },
 				stack: [{ page: "/pages/battery/BatteryListPage.qml" }],
+			})
+		case VenusOS.StartPage_Type_DeviceList:
+			return JSON.stringify({
+				main: { page: "SettingsPage.qml", properties: {} },
+				stack: [{ page: "/pages/settings/devicelist/DeviceListPage.qml" }],
 			})
 		default:
 			console.warn("Unsupported start page type:", startPageType)
@@ -154,12 +135,12 @@ QtObject {
 		}
 	}
 
-	function _findStartPageTypeForView(mainPageName, mainPage, stackPageUrls) {
+	function _findStartPageTypeForView(mainPageName, mainPage, topStackPageUrl) {
 		switch (mainPageName) {
 		case "BoatPage.qml":
 			return VenusOS.StartPage_Type_Boat
 		case "BriefPage.qml":
-			if (stackPageUrls.length === 0) {
+			if (!topStackPageUrl) {
 				if (mainPage.showSidePanel === undefined) {
 					console.warn("Error: BriefPage does not have showSidePanel property!")
 				} else {
@@ -170,14 +151,14 @@ QtObject {
 			}
 			break
 		case "OverviewPage.qml":
-			if (stackPageUrls.length === 0) {
+			if (!topStackPageUrl) {
 				return VenusOS.StartPage_Type_Overview
-			} else if (stackPageUrls[stackPageUrls.length - 1].endsWith("/BatteryListPage.qml")) {
+			} else if (topStackPageUrl.endsWith("/BatteryListPage.qml")) {
 				return VenusOS.StartPage_Type_BatteryList
 			}
 			break
 		case "LevelsPage.qml":
-			if (stackPageUrls.length === 0) {
+			if (!topStackPageUrl) {
 				if (mainPage.currentTabIndex === undefined) {
 					console.warn("Error: LevelsPage does not have currentTabIndex property!")
 				} else {
@@ -185,6 +166,13 @@ QtObject {
 							? VenusOS.StartPage_Type_Levels_Tanks
 							: VenusOS.StartPage_Type_Levels_Environment
 				}
+			}
+			break
+		case "NotificationsPage.qml":
+			return VenusOS.StartPage_Type_Notifications
+		case "SettingsPage.qml":
+			if (topStackPageUrl && topStackPageUrl.endsWith("/DeviceListPage.qml")) {
+				return VenusOS.StartPage_Type_DeviceList
 			}
 			break
 		}
@@ -199,6 +187,11 @@ QtObject {
 	// JSON string containing the start page configuration.
 	readonly property VeQuickItem _startPageName: VeQuickItem {
 		uid: root.systemSettingsUid + "/Settings/Gui2/StartPageName"
+		onValueChanged: {
+			if (valid && value !== "") {
+				root._startPageNameConfig = valid && value !== "" ? JSON.parse(_startPageName.value) : null
+			}
+		}
 	}
 
 	// Time to wait (in seconds) when the app is idle, before loading the start page.

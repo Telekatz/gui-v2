@@ -41,7 +41,7 @@ Page {
 					Global.pageManager.popPage(root)
 				}
 
-				//% "VRM Portal"
+				//% "VRM Portal access level"
 				text: qsTrId("settings_logging_vrm_portal")
 				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Network/VrmPortal"
 				updateDataOnClick: false
@@ -91,7 +91,7 @@ Page {
 			ListLink {
 				preferredVisible: portalId.dataItem.valid && productId.valid
 
-				//% "VRM Device Registration"
+				//% "VRM device registration"
 				text: qsTrId("settings_vrm_device_registration")
 				url: "https://vrm.victronenergy.com/login?installationIdentifier=%1&productId=%2".arg(portalId.dataItem.value).arg(productId.value)
 
@@ -158,7 +158,7 @@ Page {
 
 				Timer {
 					interval: 1000
-					running: parent.visible && root.animationEnabled
+					running: parent.visible && Global.timersEnabled
 					repeat: true
 					triggeredOnStart: true
 					onTriggered: parent.secondaryText = root.timeAgo(parent.dataItem.value)
@@ -307,7 +307,7 @@ Page {
 				//% "Unknown error"
 				defaultSecondaryText: qsTrId("settings_vrm_unknown_error")
 				optionModel: [
-					//% "No Error"
+					//% "No error"
 					{ display: qsTrId("settings_vrm_no_error"), value: 0 },
 					//% "No space left on storage"
 					{ display: qsTrId("settings_vrm_no_space_error"), value: 1 },
@@ -356,7 +356,7 @@ Page {
 
 				Timer {
 					interval: 1000
-					running: !!parent.dataItem.value && root.animationEnabled
+					running: !!parent.dataItem.value && Global.timersEnabled
 					repeat: true
 					triggeredOnStart: true
 					onTriggered: parent.secondaryText = root.timeAgo(parent.dataItem.value)

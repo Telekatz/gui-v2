@@ -5,7 +5,6 @@
 
 import QtQuick
 import Victron.VenusOS
-import Victron.Gauges
 
 Page {
 	id: root
@@ -18,12 +17,12 @@ Page {
 				//% "Capacity"
 				text: qsTrId("devicelist_tanksetup_capacity")
 				dataItem.uid: root.bindPrefix + "/Capacity"
-				dataItem.sourceUnit: Units.unitToVeUnit(VenusOS.Units_Volume_CubicMeter)
+				dataItem.sourceUnit: Units.unitToVeUnit(VenusOS.Units_Volume_CubicMetre)
 				dataItem.displayUnit: Units.unitToVeUnit(Global.systemSettings.volumeUnit)
 				suffix: Units.defaultUnitString(Global.systemSettings.volumeUnit)
-				stepSize: Global.systemSettings.volumeUnit === VenusOS.Units_Volume_CubicMeter
+				stepSize: Global.systemSettings.volumeUnit === VenusOS.Units_Volume_CubicMetre
 						  ? 0.005
-						  : 1   // Liters, Gallons
+						  : 1   // Litres, Gallons
 				decimals: Units.defaultUnitPrecision(Global.systemSettings.volumeUnit)
 			}
 
@@ -80,7 +79,7 @@ Page {
 				text: qsTrId("devicelist_tanksetup_fluid_type")
 				dataItem.uid: root.bindPrefix + "/FluidType"
 				optionModel: Global.tanks.tankTypes.map(function(tankType) {
-					return { display: Gauges.tankProperties(tankType).name || "", value: tankType }
+					return { display: VenusOS.tank_fluidTypeToText(tankType), value: tankType }
 				})
 			}
 

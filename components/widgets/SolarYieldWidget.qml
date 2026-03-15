@@ -10,13 +10,13 @@ OverviewWidget {
 	id: root
 
 	onClicked: {
-		const singleDeviceOnly = (Global.solarDevices.model.count + Global.pvInverters.model.count) === 1
-		if (singleDeviceOnly && Global.solarDevices.model.count === 1) {
+		const singleDeviceOnly = (Global.solarInputs.devices.count + Global.solarInputs.pvInverterDevices.count) === 1
+		if (singleDeviceOnly && Global.solarInputs.devices.count === 1) {
 			Global.pageManager.pushPage("/pages/solar/SolarDevicePage.qml",
-					{ "solarDevice": Global.solarDevices.model.firstObject })
-		} else if (singleDeviceOnly && Global.pvInverters.model === 1) {
+					{ "serviceUid": Global.solarInputs.devices.firstObject.serviceUid })
+		} else if (singleDeviceOnly && Global.solarInputs.pvInverterDevices.count === 1) {
 			Global.pageManager.pushPage("/pages/solar/PvInverterPage.qml",
-					{ "pvInverter": Global.pvInverters.model.deviceAt(0) })
+					{ "serviceUid": Global.solarInputs.pvInverterDevices.firstObject.serviceUid })
 		} else {
 			Global.pageManager.pushPage("/pages/solar/SolarInputListPage.qml", { "title": root.title })
 		}
@@ -39,23 +39,19 @@ OverviewWidget {
 		Loader {
 			id: extraContentLoader
 
-			readonly property int margin: sourceComponent === historyComponent
-				  ? Theme.geometry_overviewPage_widget_solar_graph_margins
-				  : root.verticalMargin
-
 			anchors {
 				left: parent.left
-				leftMargin: margin
 				right: parent.right
-				rightMargin: margin
 				bottom: parent.bottom
-				bottomMargin: margin
+				bottomMargin: sourceComponent === historyComponent
+					? Theme.geometry_overviewPage_widget_content_verticalMargin
+					: root.verticalMargin
 			}
 			active: root.size >= VenusOS.OverviewWidget_Size_L
 			sourceComponent: {
-				if (Global.pvInverters.model.count === 1 && Global.solarDevices.model.count === 0) {
+				if (Global.solarInputs.pvInverterDevices.count === 1 && Global.solarInputs.devices.count === 0) {
 					return phaseComponent
-				} else if (Global.pvInverters.model.count === 0) {
+				} else if (Global.solarInputs.pvInverterDevices.count === 0) {
 					return historyComponent
 				}
 				// If there are both chargers and inverters, do not show the history (as inverters
@@ -64,23 +60,39 @@ OverviewWidget {
 				return null
 			}
 		}
+
 	]
 
 	Component {
 		id: phaseComponent
 
 		ThreePhaseDisplay {
-			model: Global.pvInverters.model.deviceAt(0).phases
+			leftPadding: Theme.geometry_overviewPage_widget_content_horizontalMargin
+			rightPadding: Theme.geometry_overviewPage_widget_content_horizontalMargin
+			model: pvInverter.phases
 			visible: model.count > 1
 			widgetSize: root.size
+
+			PvInverter {
+				id: pvInverter
+				serviceUid: Global.solarInputs.pvInverterDevices.firstObject?.serviceUid ?? ""
+			}
 		}
 	}
 
 	Component {
 		id: historyComponent
 
-		SolarYieldGraph {
-			height: root.extraContent.height - (2 * Theme.geometry_overviewPage_widget_solar_graph_margins)
+		Item {
+			width: parent.width
+			height: root.extraContent.height - Theme.geometry_overviewPage_widget_solar_graph_margins
+
+			SolarYieldGraph {
+				anchors.horizontalCenter: parent.horizontalCenter
+				height: parent.height
+				width: parent.width - (2 * Theme.geometry_overviewPage_widget_solar_graph_margins)
+				maximumBarCount: Theme.geometry_overviewPage_widget_solar_graph_bar_count
+			}
 		}
 	}
 }

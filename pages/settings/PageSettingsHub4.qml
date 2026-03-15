@@ -37,17 +37,17 @@ Page {
 
 		ListRadioButtonGroup {
 			text: CommonWords.mode
-			optionModel: Global.ess.stateModel
+			optionModel: Global.systemSettings.ess.stateModel
 			currentIndex: {
 				for (let i = 0; i < optionModel.length; ++i) {
-					if (optionModel[i].value === Global.ess.state) {
+					if (optionModel[i].value === Global.systemSettings.ess.state) {
 						return i
 					}
 				}
 				return -1
 			}
 			onOptionClicked: function(index) {
-				Global.ess.setStateRequested(optionModel[index].value)
+				Global.systemSettings.ess.setState(optionModel[index].value)
 			}
 		}
 
@@ -67,10 +67,32 @@ Page {
 		}
 
 		ListRadioButtonGroup {
+			//% "Grid meter required"
+			text: qsTrId("settings_ess_grid_meter_required")
+			dataItem.uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/GridMeterRequired"
+			preferredVisible: withoutGridMeter.currentIndex === 0
+				&& essMode.value !== VenusOS.Ess_Hub4ModeState_Disabled
+			optionModel: [
+				{
+					display: CommonWords.yes,
+					value: 1,
+					//% "A grid meter must be present for ESS operation. If not available, the system will switch to pass-through."
+					caption: qsTrId("settings_ess_grid_meter_required_caption")
+				},
+				{
+					display: CommonWords.no,
+					value: 0,
+					//% "The system will use a grid meter when present, but fall back to internal measurements if the connection to the grid meter is lost."
+					caption: qsTrId("settings_ess_grid_meter_optional_caption")
+				},
+			]
+		}
+
+		ListRadioButtonGroup {
 			//% "Self-consumption from battery"
 			text: qsTrId("settings_ess_self_consumption_battery")
 			dataItem.uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/BatteryUse"
-			preferredVisible: withoutGridMeter.currentIndex === 0 && hasAcOutSystemItem.value === 1
+			preferredVisible: withoutGridMeter.currentIndex === 0 && (hasAcOutSystemItem.value === 1 || dataItem.value === 1)
 			optionModel: [
 				//% "All system loads"
 				{ display: qsTrId("settings_ess_all_system_loads"), value: 0 },
@@ -109,7 +131,7 @@ Page {
 
 			//% "Minimum SOC (unless grid fails)"
 			text: qsTrId("settings_ess_min_soc")
-			secondaryText: Global.ess.minimumStateOfCharge + "%"
+			secondaryText: Global.systemSettings.ess.minimumStateOfCharge + "%"
 			preferredVisible: essMode.value !== VenusOS.Ess_Hub4ModeState_Disabled
 				&& batteryLifeState.dataItem.value !== VenusOS.Ess_BatteryLifeState_KeepCharged
 			onClicked: Global.dialogLayer.open(minSocDialogComponent)
@@ -118,8 +140,8 @@ Page {
 				id: minSocDialogComponent
 
 				ESSMinimumSOCDialog {
-					minimumStateOfCharge: Global.ess.minimumStateOfCharge
-					onAccepted: Global.ess.setMinimumStateOfChargeRequested(minimumStateOfCharge)
+					minimumStateOfCharge: Global.systemSettings.ess.minimumStateOfCharge
+					onAccepted: Global.systemSettings.ess.setMinimumStateOfCharge(minimumStateOfCharge)
 				}
 			}
 		}
@@ -128,19 +150,19 @@ Page {
 			//% "Active SOC limit"
 			text: qsTrId("settings_ess_active_soc_limit")
 			preferredVisible: essMode.value !== VenusOS.Ess_Hub4ModeState_Disabled
-				&& Global.ess.isBatteryLifeActive(batteryLifeState.dataItem.value)
-			value: Math.max(Global.ess.minimumStateOfCharge || 0, socLimit.value || 0)
+				&& Global.systemSettings.ess.isBatteryLifeActive(batteryLifeState.dataItem.value)
+			value: Math.max(Global.systemSettings.ess.minimumStateOfCharge || 0, socLimit.value || 0)
 			unit: VenusOS.Units_Percentage
 		}
 
 		ListRadioButtonGroup {
 			id: batteryLifeState
 
-			//% "Battery life state"
+			//% "BatteryLife state"
 			text: qsTrId("settings_ess_batteryLife_state")
 			dataItem.uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/BatteryLife/State"
 			preferredVisible: essMode.value !== VenusOS.Ess_Hub4ModeState_Disabled
-				&& Global.ess.isBatteryLifeActive(batteryLifeState.dataItem.value)
+				&& Global.systemSettings.ess.isBatteryLifeActive(batteryLifeState.dataItem.value)
 			interactive: false
 			optionModel: [
 				// Values below taken from MaintenanceState enum in dbus-cgwacs
@@ -313,10 +335,43 @@ Page {
 				Global.pageManager.pushPage("/pages/settings/PageHub4Debug.qml")
 			}
 		}
+
+		SettingsListHeader {
+			//% "Deprecated settings"
+			text: qsTrId("settings_ess_deprecated")
+			preferredVisible: maxChargePowerPercentage.preferredVisible || maxDischargePowerPercentage.preferredVisible
+		}
+
+		ListSpinBox {
+			id: maxChargePowerPercentage
+			//% "Battery charge limit (% of CCL)"
+			text: qsTrId("settings_ess_max_charge_percentage")
+			preferredVisible: dataItem.value < 100.0
+			dataItem.uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/MaxChargePercentage"
+			suffix: Units.defaultUnitString(VenusOS.Units_Percentage)
+			from: 0
+			to: 100
+		}
+
+		ListSpinBox {
+			id: maxDischargePowerPercentage
+			//% "Battery discharge limit (% of DCL)"
+			text: qsTrId("settings_ess_max_discharge_percentage")
+			preferredVisible: dataItem.value < 100.0
+			dataItem.uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/MaxDischargePercentage"
+			suffix: Units.defaultUnitString(VenusOS.Units_Percentage)
+			from: 0
+			to: 100
+		}
+	}
+
+	FilteredDeviceModel {
+		id: acSystemDevices
+		serviceTypes: ["acsystem"]
 	}
 
 	GradientListView {
-		header: root._valid ? null : (Global.inverterChargers.acSystemDevices.count > 0 ? hasAcSystem : noEssHeader)
+		header: root._valid ? null : (acSystemDevices.count > 0 ? hasAcSystem : noEssHeader)
 		model: root._valid ? essSettings : null
 	}
 

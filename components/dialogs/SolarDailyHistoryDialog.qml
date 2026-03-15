@@ -49,9 +49,7 @@ T.Dialog {
 
 	anchors.centerIn: parent
 	implicitWidth: background.implicitWidth
-	implicitHeight: Theme.geometry_solarDailyHistoryDialog_header_height
-					+ tableView.height
-					+ (errorView.visible ? errorView.collapsedHeight + Theme.geometry_solarDetailBox_verticalMargin : 0)
+	implicitHeight: background.implicitHeight
 	verticalPadding: 0
 	horizontalPadding: 0
 	modal: true
@@ -60,7 +58,14 @@ T.Dialog {
 	// In case height changes when dialog is opened, update the highlight bar position.
 	onHeightChanged: root._positionHighlightBar()
 
-	enter: Transition {
+	// Only provide transitions if animations are enabled. Ideally the transitions would always be
+	// set but with 'enabled' set to only run when needed, but due to QTBUG-142410 the enabled value
+	// is not respected.
+	enter: Global.animationEnabled ? enterTransition : null
+	exit: Global.animationEnabled ? exitTransition : null
+
+	Transition {
+		id: enterTransition
 		SequentialAnimation {
 			ScriptAction {
 				script: {
@@ -73,17 +78,20 @@ T.Dialog {
 			NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Theme.animation_page_fade_duration }
 		}
 	}
-	exit: Transition {
+
+	Transition {
+		id: exitTransition
 		NumberAnimation {
 			loops: Qt.platform.os == "wasm" ? 0 : 1 // workaround wasm crash, see https://bugreports.qt.io/browse/QTBUG-121382
-			property: "opacity"; from: 1.0; to: 0.0; duration: Theme.animation_page_fade_duration }
+			property: "opacity"; from: 1.0; to: 0.0; duration: Theme.animation_page_fade_duration
+		}
 	}
 
 	background: Rectangle {
 		implicitWidth: Theme.geometry_modalDialog_width
 		implicitHeight: Theme.geometry_solarDailyHistoryDialog_header_height
 					+ tableView.height
-					+ (errorView.visible ? errorView.collapsedHeight + Theme.geometry_solarDetailBox_verticalMargin : 0)
+					+ (errorView.enabled ? errorView.collapsedHeight + Theme.geometry_solarDetailBox_verticalMargin : 0)
 		radius: Theme.geometry_modalDialog_radius
 		color: Theme.color_background_secondary
 
@@ -147,17 +155,11 @@ T.Dialog {
 			font.pixelSize: Theme.font_size_body1
 		}
 
-		IconButton {
+		CloseButton {
 			anchors {
 				right: parent.right
 				top: parent.top
 			}
-			width: Theme.geometry_solarDailyHistoryDialog_closeButton_icon_size + (2 * Theme.geometry_solarDailyHistoryDialog_closeButton_icon_margins)
-			height: Theme.geometry_solarDailyHistoryDialog_closeButton_icon_size + (2 * Theme.geometry_solarDailyHistoryDialog_closeButton_icon_margins)
-			icon.sourceSize.height: Theme.geometry_solarDailyHistoryDialog_closeButton_icon_size
-			icon.color: Theme.color_ok
-			icon.source: "qrc:/images/icon_close_32.svg"
-
 			onClicked: root.close()
 		}
 
@@ -193,7 +195,18 @@ T.Dialog {
 				const history = root.solarHistory.dailyHistory(root.day)
 				return history ? history.errorModel : null
 			}
-			visible: model && model.count > 0
+			enabled: model?.count > 0
+			visible: enabled
+		}
+	}
+
+	Component.onCompleted: {
+		if (Global.main && Global.main.requiresRotation) {
+			// we cannot manually position the header or footer.
+			// just reject the dialog for now.
+			// TODO: use eglfs and rotate the entire surface.
+			// See: issue #2702
+			Qt.callLater(reject)
 		}
 	}
 }

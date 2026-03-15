@@ -16,39 +16,41 @@ import Victron.VenusOS
 Flow {
 	id: root
 
-	property alias model: phaseRepeater.model
+	required property PhaseModel model
 	property int widgetSize: VenusOS.OverviewWidget_Size_S
 
 	// These properties are used to change the text color depending on the phase value.
 	property int valueType: VenusOS.Gauges_ValueType_NeutralPercentage
-	property string phaseModelProperty
 	property real minimumValue
 	property real maximumValue
 
 	// If true, the color text will be green when the phase is feeding back to the grid.
 	property bool inputMode
 
+	readonly property real availableWidth: width - leftPadding - rightPadding
+
 	Repeater {
 		id: phaseRepeater
 
+		model: root.model
 		delegate: Item {
 			id: phaseDelegate
 
-			// ignore noise values (close to zero)
-			readonly property real modelValue: Math.floor(Math.abs(model[root.phaseModelProperty] || 0)) < 1.0 ? 0.0
-					: model[root.phaseModelProperty]
-			readonly property bool feedingToGrid: root.inputMode && modelValue < 0.0
-			readonly property int valueStatus: feedingToGrid ? Theme.Ok
-					: root.phaseModelProperty ? Theme.getValueStatus(valueRange.valueAsRatio * 100, root.valueType)
-					: Theme.Ok
+			required property int index
+			required property real power
+			required property real current
+			required property string name
+
+			readonly property bool feedingToGrid: root.inputMode && power < -1.0 // ignore noise values (close to zero)
+			readonly property int valueStatus: Theme.getValueStatus(valueRange.valueAsRatio * 100, root.valueType)
 			readonly property bool criticalOrWarning: valueStatus === Theme.Critical || valueStatus === Theme.Warning
 			readonly property color textColor: Theme.color_darkOk,feedingToGrid ? Theme.color_green
 					: criticalOrWarning ? Theme.statusColorValue(valueStatus)
 					: Theme.color_font_primary
 
 			width: root.widgetSize <= VenusOS.OverviewWidget_Size_S
-				   ? parent.width / 3
-				   : parent.width
+				   ? root.availableWidth / 3
+				   : root.availableWidth
 			height: root.widgetSize <= VenusOS.OverviewWidget_Size_S
 					? quantityLabel.y + quantityLabel.height
 					: phaseLabel.height
@@ -56,7 +58,7 @@ Flow {
 			Label {
 				id: phaseLabel
 
-				text: model.name + ":"
+				text: phaseDelegate.name + ":"
 				color: quantityLabel.unitColor
 				font.pixelSize: root.widgetSize >= VenusOS.OverviewWidget_Size_L
 						? Theme.font_size_body1
@@ -74,7 +76,11 @@ Flow {
 				y: root.widgetSize <= VenusOS.OverviewWidget_Size_S
 						? phaseLabel.height + Theme.geometry_three_phase_column_spacing
 						: 0
-				dataObject: model
+				sourceType: VenusOS.ElectricalQuantity_Source_Ac
+				dataObject: QtObject {
+					readonly property real power: phaseDelegate.power
+					readonly property real current: phaseDelegate.current
+				}
 				font.pixelSize: phaseLabel.font.pixelSize
 				valueColor: phaseDelegate.textColor
 				unitColor: valueColor == Theme.color_font_primary
@@ -85,7 +91,7 @@ Flow {
 			ValueRange {
 				id: valueRange
 
-				value: phaseDelegate.modelValue
+				value: phaseDelegate.current
 				minimumValue: root.minimumValue
 				maximumValue: root.maximumValue
 			}

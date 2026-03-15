@@ -24,10 +24,6 @@ Device {
 			phaseCount = Math.max(count, maxPhaseCount)
 		}
 
-		function getPhase(index) {
-			return _phases.objectAt(index)
-		}
-
 		readonly property Instantiator _phases: Instantiator {
 			model: 3
 			delegate: QtObject {
@@ -87,15 +83,5 @@ Device {
 
 	readonly property VeQuickItem _power: VeQuickItem {
 		uid: pvInverter.serviceUid + "/Ac/Power"
-	}
-
-	onValidChanged: {
-		if (!!Global.pvInverters) {
-			if (valid) {
-				Global.pvInverters.addInverter(pvInverter)
-			} else {
-				Global.pvInverters.removeInverter(pvInverter)
-			}
-		}
 	}
 }

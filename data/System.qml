@@ -14,6 +14,7 @@ QtObject {
 
 	readonly property bool hasGridMeter: _gridDeviceType.valid
 	readonly property bool hasAcOutSystem: _hasAcOutSystem.valid && _hasAcOutSystem.value === 1
+	readonly property bool hasAcLoads: !_hasAcLoads.valid || _hasAcLoads.value === 1 // show AC loads by default if the path isn't valid
 	readonly property bool hasVebusEss: _systemType.value === "ESS" || _systemType.value === "Hub-4"
 	readonly property bool hasEss: hasVebusEss || _systemType.value === "AC System"
 	readonly property bool showInputLoads: load.acIn.hasPower
@@ -29,11 +30,15 @@ QtObject {
 	}
 
 	readonly property QtObject dc: QtObject {
-		readonly property real power: (_hasDcSystem.valid && _hasDcSystem.value && _dcSystemPower.valid) ? _dcSystemPower.value : NaN
-		readonly property real current: (isNaN(power) || isNaN(voltage) || voltage === 0) ? NaN : power / voltage
+		// Regardless of the actual power value, regard the system as having DC power (and show
+		// DC Loads in the UI) if any relevant DC services are present or if /HasDcSystem=1.
+		readonly property bool hasPower: serviceModel.count > 0 || _hasDcSystem.value === 1
+
+		readonly property real power: hasPower ? _dcSystemPower.value || 0 : NaN
+		readonly property bool currentValid: !isNaN(power) && !isNaN(voltage) && (voltage !== 0)
+		readonly property real current: currentValid ? power / voltage : NaN
 		readonly property real voltage: _dcBatteryVoltage.valid ? _dcBatteryVoltage.value : NaN
 		readonly property real maximumPower: _maximumDcPower.valid ? _maximumDcPower.value : NaN
-		readonly property real preferredQuantity: Global.systemSettings.electricalQuantity === VenusOS.Units_Amp ? current : power
 
 		readonly property VeQuickItem _dcSystemPower: VeQuickItem {
 			uid: root.serviceUid + "/Dc/System/Power"
@@ -50,35 +55,17 @@ QtObject {
 		readonly property VeQuickItem _hasDcSystem: VeQuickItem {
 			uid: Global.systemSettings.serviceUid + "/Settings/SystemSetup/HasDcSystem"
 		}
+
+		readonly property FilteredServiceModel serviceModel: FilteredServiceModel {
+			serviceTypes: ["dcload", "dcsystem", "dcdc"]
+		}
 	}
 
 	property QtObject solar: QtObject {
 		readonly property real power: Units.sumRealNumbers(acPower, dcPower)
-		property real acPower: _pvMonitor.totalPower
-		property real dcPower: _dcPvPower.valid ? _dcPvPower.value : NaN
+		readonly property real acPower: _pvMonitor.totalPower
+		readonly property real dcPower: _dcPvPower.valid ? _dcPvPower.value : NaN
 		readonly property real maximumPower: _maximumPower.valid ? _maximumPower.value : NaN
-
-		// In cases where the overall current cannot be determined, the value is NaN.
-		readonly property real current: {
-			if (Global.pvInverters.model.count > 0) {
-				if (Global.solarDevices.model.count > 0) {
-					// If both PV chargers and PV inverters are present, return NaN as the current
-					// cannot be summed across AC and DC systems.
-					return NaN
-				}
-				if (_pvMonitor.maxPhaseCount > 1) {
-					// If any PV inverter has more than one phase, return NaN as current values
-					// cannot be summed across multiple phases.
-					return NaN
-				}
-				// There are one or more PV inverters, which are all single-phase, so it's safe to
-				// return a total current as they should all have the same PV output voltage.
-				return _pvMonitor.totalCurrent
-			} else if (Global.solarDevices.model.count > 0) {
-				return _dcPvCurrent.valid ? _dcPvCurrent.value : NaN
-			}
-			return NaN
-		}
 
 		readonly property VeQuickItem _maximumPower: VeQuickItem {
 			uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Pv/Power/Max"
@@ -114,6 +101,10 @@ QtObject {
 
 	readonly property VeQuickItem _gridDeviceType: VeQuickItem {
 		uid: root.serviceUid + "/Ac/Grid/DeviceType"
+	}
+
+	readonly property VeQuickItem _hasAcLoads: VeQuickItem {
+		uid: root.serviceUid + "/Ac/HasAcLoads"
 	}
 
 	readonly property VeQuickItem _hasAcOutSystem: VeQuickItem {

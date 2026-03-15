@@ -11,67 +11,72 @@ ListItem {
 
 	readonly property alias dataItem: dataItem
 	property alias checked: switchItem.checked
-	property alias checkable: switchItem.checkable
+	property bool checkable
 	property alias secondaryText: secondaryLabel.text
 	property bool updateDataOnClick: true
 	property bool invertSourceValue
 
-	property int valueTrue: 1
-	property int valueFalse: 0
+	property var valueTrue: 1
+	property var valueFalse: 0
 
-	property bool _updatingValue
-
-	// Emitted when a click results in a change in the data value, or when checkable=true and the
-	// switch is toggled directly.
-	signal toggled
+	// Override ListItem right padding to give Switch a larger touch area for users
+	rightPadding: 0
 
 	interactive: (dataItem.uid === "" || dataItem.valid)
+	pressAreaEnabled: false
 
+	// Since pressAreaEnabled=false (to ensure only the internal Switch is clickable, rather than
+	// the whole item), the key events must be forwarded to the internal Switch so that the Space
+	// key activates the Switch onClicked() handler.
+	Keys.forwardTo: [switchItem, root]
+
+	content.spacing: 0
 	content.children: [
 		Label {
 			id: secondaryLabel
+			rightPadding: 0
 			anchors.verticalCenter: switchItem.verticalCenter
 			color: Theme.color_font_secondary
 			font.pixelSize: Theme.font_size_body2
-			width: Math.min(implicitWidth, root.maximumContentWidth - switchItem.width - root.content.spacing)
+			width: Math.min(implicitWidth, root.maximumContentWidth - switchItem.width - Theme.geometry_listItem_content_spacing)
 			wrapMode: Text.Wrap
 		},
 		Switch {
 			id: switchItem
 
-			enabled: root.clickable
+			topInset: Theme.geometry_listItem_content_verticalMargin
+			bottomInset: Theme.geometry_listItem_content_verticalMargin
+			leftInset: Theme.geometry_listItem_content_spacing
+			rightInset: root.flat ? Theme.geometry_listItem_flat_content_horizontalMargin : Theme.geometry_listItem_content_horizontalMargin
 			checked: invertSourceValue ? dataItem.value === valueFalse : dataItem.value === valueTrue
-			checkable: false
-			onClicked: root.clicked()
-			onToggled: root.toggled()
+			checkable: root.checkable && root.clickable
+			focusPolicy: Qt.NoFocus
+			showEnabled: root.clickable
+
+			onClicked: {
+				if (!root.checkWriteAccessLevel() || !root.clickable) {
+					return
+				}
+				if (root.updateDataOnClick) {
+					if (root.dataItem.uid.length > 0) {
+						// Note: this logic only holds so long as checkable is false so we can use
+						// the current unmodified checked state at the point of onClicked.
+						// (dataItem might not be valid until the first write so we can't simply use
+						// the comparison of dataItem.value === valueFalse) and forget invertSourceValue).
+						// Note that an malformed uid will result in it being empty when inspected.
+						if (root.invertSourceValue) {
+							root.dataItem.setValue(checked ? valueTrue : valueFalse)
+						} else {
+							root.dataItem.setValue(checked ? valueFalse : valueTrue)
+						}
+					}
+				}
+				root.clicked()
+			}
 		}
 	]
 
-	onClicked: {
-		if (switchItem.enabled && updateDataOnClick) {
-			if (root.dataItem.uid.length > 0) {
-				// Note: this logic only holds so long as checkable is false so we can use
-				// the current unmodified checked state at the point of onClicked.
-				// (dataItem might not be valid until the first write so we can't simply use
-				// the comparison of dataItem.value === valueFalse) and forget invertSourceValue).
-				// Note that an malformed uid will result in it being empty when inspected.
-				root._updatingValue = true
-				if (invertSourceValue) {
-					dataItem.setValue(switchItem.checked ? valueTrue : valueFalse)
-				} else {
-					dataItem.setValue(switchItem.checked ? valueFalse : valueTrue)
-				}
-			}
-		}
-	}
-
 	VeQuickItem {
 		id: dataItem
-		onValueChanged: {
-			if (root._updatingValue) {
-				root.toggled()
-			}
-			root._updatingValue = false
-		}
 	}
 }

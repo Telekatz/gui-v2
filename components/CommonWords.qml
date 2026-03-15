@@ -132,6 +132,9 @@ QtObject {
 	//% "Closed"
 	readonly property string closed_status: qsTrId("common_words_closed_status")
 
+	//% "Color"
+	readonly property string color: qsTrId("common_words_color")
+
 	//% "Connected"
 	readonly property string connected: qsTrId("common_words_connected");
 
@@ -171,6 +174,9 @@ QtObject {
 	//% "Disconnected"
 	readonly property string disconnected: qsTrId("common_words_disconnected")
 
+	//% "Discovered devices"
+	readonly property string discovered_devices: qsTrId("common_words_discovered_devices")
+
 	//% "Enable"
 	readonly property string enable: qsTrId("common_words_enable")
 
@@ -196,14 +202,29 @@ QtObject {
 	//% "ESS"
 	readonly property string ess: qsTrId("common_words_ess")
 
+	//: The firmware type for normal images
+	//% "Normal"
+	readonly property string firmware_type_normal: qsTrId("common_words_firmware_type_normal")
+
+	//: The firmware type for large images
+	//% "Large"
+	readonly property string firmware_type_large: qsTrId("common_words_firmware_type_large")
+
 	//% "Firmware version"
 	readonly property string firmware_version: qsTrId("common_words_firmware_version")
 
 	//% "Generator"
 	readonly property string generator: qsTrId("common_words_generator")
 
+	//: %1 = name of the device
+	//% "If it was recently disconnected, go to Settings → Devices → %1 → Advanced, and select 'Redetect VE.Bus system'."
+	readonly property string go_to_redetect_system: qsTrId("common_words_go_to_redetect_system")
+
 	//% "Grid"
 	readonly property string grid: qsTrId("common_words_grid")
+
+	//% "GX device relays"
+	readonly property string gx_device_relays: qsTrId("common_words_gx_device_relays")
 
 	//% "High battery temperature"
 	readonly property string high_battery_temperature: qsTrId("common_words_high_battery_temperature")
@@ -232,6 +253,9 @@ QtObject {
 
 	//% "Idle"
 	readonly property string idle: qsTrId("common_words_idle")
+
+	//% "Image type"
+	readonly property string image_type: qsTrId("common_words_image_type")
 
 	//: Status is 'inactive'
 	//% "Inactive"
@@ -290,6 +314,10 @@ QtObject {
 	//% "Manufacturer"
 	readonly property string manufacturer: qsTrId("common_words_manufacturer")
 
+	//: Short for Maximum
+	//% "Max"
+	readonly property string max: qsTrId("common_words_max")
+
 	//% "Maximum current"
 	readonly property string maximum_current: qsTrId("common_words_maximum_current")
 
@@ -301,6 +329,10 @@ QtObject {
 
 	//% "Maximum voltage"
 	readonly property string maximum_voltage: qsTrId("common_words_maximum_voltage")
+
+	//: Short for Minimum
+	//% "Min"
+	readonly property string min: qsTrId("common_words_min")
 
 	//% "Minimum current"
 	readonly property string minimum_current: qsTrId("common_words_minimum_current")
@@ -323,12 +355,6 @@ QtObject {
 	//% "No"
 	readonly property string no: qsTrId("common_words_no")
 
-	//% "This setting is disabled when a Digital Multi Control is connected."
-	readonly property string noAdjustableByDmc: qsTrId("common_words_setting_disabled_when_dmc_connected")
-
-	//% "This setting is disabled when a VE.Bus BMS is connected."
-	readonly property string noAdjustableByBms: qsTrId("common_words_setting_disabled_when_bms_connected")
-
 	//% "No error"
 	readonly property string no_error: qsTrId("common_words_no_error")
 
@@ -344,6 +370,10 @@ QtObject {
 
 	//% "Not connected"
 	readonly property string not_connected: qsTrId("common_words_not_connected")
+
+	//: The 'Notifications' page
+	//% "Notifications"
+	readonly property string notifications: qsTrId("common_words_notifications")
 
 	//% "Off"
 	readonly property string off: qsTrId("common_words_off");
@@ -387,6 +417,9 @@ QtObject {
 	//% "Position"
 	readonly property string position_ac: qsTrId("common_words_position_ac")
 
+	//% "Press"
+	readonly property string press: qsTrId("common_words_press")
+
 	//% "Press to clear"
 	readonly property string press_to_clear: qsTrId("common_words_press_to_clear")
 
@@ -416,6 +449,9 @@ QtObject {
 	//% "Reset"
 	readonly property string reset: qsTrId("common_words_reset")
 
+	//% "Reset history on the monitor itself"
+	readonly property string reset_history_on_the_monitor_itself: qsTrId("common_words_batteryhistory_reset_history_on_the_monitor_itself")
+
 	//% "Reboot"
 	readonly property string reboot: qsTrId("common_words_reboot")
 
@@ -440,6 +476,9 @@ QtObject {
 
 	//% "Signal strength"
 	readonly property string signal_strength: qsTrId("common_words_signal_strength");
+
+	//% "Silence alarm"
+	readonly property string silence_alarm: qsTrId("common_words_silence_alarm")
 
 	//: State of charge (as a percentage). %1 = the SOC value
 	//% "SOC %1"
@@ -496,11 +535,17 @@ QtObject {
 	//% "Temperature sensor"
 	readonly property string temperature_sensor: qsTrId("common_words_temperature_sensor")
 
+	//% "Time To Go"
+	readonly property string time_to_go: qsTrId("common_words_time_to_go")
+
 	//% "Today"
 	readonly property string today: qsTrId("common_words_today")
 
 	//% "Total"
 	readonly property string total: qsTrId("common_words_total")
+
+	//% "Total power"
+	readonly property string total_power: qsTrId("common_words_total_power")
 
 	//: Solar tracker
 	//% "Tracker"
@@ -516,8 +561,24 @@ QtObject {
 	//% "Unknown"
 	readonly property string unknown_status: qsTrId("common_words_unknown_status")
 
+	//% "Value must be greater than start value"
+	readonly property string value_must_be_greater_than_start_value: qsTrId("common_words_value_must_be_greater_than_start_value")
+
+	//% "Value must be greater than stop value"
+	readonly property string value_must_be_greater_than_stop_value: qsTrId("common_words_value_must_be_greater_than_stop_value")
+
+	//% "Value must be lower than start value"
+	readonly property string value_must_be_lower_than_start_value: qsTrId("common_words_value_must_be_lower_than_start_value")
+
+	//% "Value must be lower than stop value"
+	readonly property string value_must_be_lower_than_stop_value: qsTrId("common_words_value_must_be_lower_than_stop_value")
+
 	//% "VE.Bus Error"
 	readonly property string vebus_error: qsTrId("common_words_vebus_error")
+
+	//: eg. 'Phase L1, device 3 (6)', where '(6)' is the index into the list of reported values
+	//% "Phase L%1, device %2 (%3)"
+	readonly property string vebus_phase_device: qsTrId("common_words_vebus_device_phase_x_device_x_index_x")
 
 	//% "Voltage"
 	readonly property string voltage: qsTrId("common_words_voltage")
@@ -545,9 +606,6 @@ QtObject {
 	//% "Dynamic power limit"
 	readonly property string dynamic_power_limit: qsTrId("common_words_dynamic_power_limit")
 
-	//% "This feature is disabled, since \"All modifications enabled\" under \"Settings -> General -> Modification checks\" is disabled."
-	readonly property string all_modifications_disabled: qsTrId("common_words_large_features_currently_disabled")
-
 	function acInputFromIndex(index) {
 		return acInputFromNumber(index + 1)
 	}
@@ -566,6 +624,10 @@ QtObject {
 		} else {
 			return unknown_status
 		}
+	}
+
+	function onlineOrOffline(value) {
+		return value === 1 || value === true ? online : offline
 	}
 
 	function yesOrNo(value) {
@@ -600,5 +662,27 @@ QtObject {
 			  //% "4th last error"
 			: errorIndex === 3 ? qsTrId("common_words_4th_last_error")
 			: ""
+	}
+
+	function notAdjustableDueToBms(serviceType, deviceName) {
+		//% "This setting is disabled when a VE.Bus BMS is connected."
+		const s = qsTrId("common_words_setting_disabled_when_bms_connected")
+		return serviceType === "vebus"
+			  //: %1 = the translated text of common_words_setting_disabled_when_bms_connected
+			  //: %2 = the translated text of common_words_go_to_redetect_system
+			  //% "%1 %2"
+			? qsTrId("common_words_bms_disabled_go_to_redetect").arg(s).arg(go_to_redetect_system.arg(deviceName))
+			: s
+	}
+
+	function notAdjustableDueToDmc(serviceType, deviceName) {
+		//% "This setting is disabled when a Digital Multi Control is connected."
+		const s = qsTrId("common_words_setting_disabled_when_dmc_connected")
+		return serviceType === "vebus"
+			  //: %1 = the translated text of common_words_setting_disabled_when_dmc_connected
+			  //: %2 = the translated text of common_words_go_to_redetect_system
+			  //% "%1 %2"
+			? qsTrId("common_words_dmc_disabled_go_to_redetect").arg(s).arg(go_to_redetect_system.arg(deviceName))
+			: s
 	}
 }

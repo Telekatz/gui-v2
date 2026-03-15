@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls as C
 import Victron.VenusOS
 
 ListItem {
@@ -18,6 +17,7 @@ ListItem {
 
 	content.children: [
 		SecondaryListLabel {
+			anchors.verticalCenter: parent.verticalCenter
 			text: root.secondaryText
 			width: Math.min(implicitWidth, root.maximumContentWidth - radioButton.width - Theme.geometry_listItem_content_spacing)
 			visible: text.length > 0
@@ -27,6 +27,8 @@ ListItem {
 
 			checkable: false
 			enabled: root.clickable
+			focusPolicy: Qt.NoFocus
+
 			onClicked: root.clicked()
 		}
 	]

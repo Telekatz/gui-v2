@@ -50,6 +50,7 @@ BaseListItem {
 	id: root
 
 	property alias text: primaryLabel.text
+	property alias textFormat: primaryLabel.textFormat
 	property alias content: content
 	property alias bottomContent: bottomContent
 	property alias bottomContentChildren: bottomContent.children
@@ -71,21 +72,37 @@ BaseListItem {
 				? VenusOS.ListItem_BottomContentSizeMode_Compact
 				: VenusOS.ListItem_BottomContentSizeMode_Stretch
 
+	property int toast
+
 	property bool interactive: false
+	property bool pressAreaEnabled: true
 	readonly property bool clickable: enabled && interactive && userHasWriteAccess
+
+	property color indicatorColor: Qt.rgba(0,0,0,0) // fully transparent by default.
+
+	property alias captionLabel: captionLabel
 
 	signal clicked()
 
 	function activate() {
 		if (root.interactive) {
 			// Issue #1964: userHasWriteAccess is ignored for ListNavigation
-			if (root instanceof ListNavigation || root.userHasWriteAccess) {
+			if (root.__is_venus_gui_list_navigation__ === true || checkWriteAccessLevel()) {
 				root.clicked()
-			} else {
-				pressArea.toast?.close(true) // close immediately
-				//% "Setting locked for access level"
-				pressArea.toast = Global.notificationLayer.showToastNotification(VenusOS.Notification_Info, qsTrId("listItem_no_access"))
 			}
+		}
+	}
+
+	function checkWriteAccessLevel() {
+		if (root.userHasWriteAccess) {
+			return true
+		} else {
+			if (root.toast) {
+				ToastModel.requestClose(pressArea.toast)
+			}
+			//% "Setting locked for access level"
+			root.toast = Global.showToastNotification(VenusOS.Notification_Info, qsTrId("listItem_no_access"))
+			return false
 		}
 	}
 
@@ -98,38 +115,45 @@ BaseListItem {
 	Keys.onSpacePressed: activate()
 	Keys.enabled: Global.keyNavigationEnabled
 
-	// Show thin colored indicator on left side if settings is only visible to super/service users
-	Rectangle {
-		visible: root.showAccessLevel >= VenusOS.User_AccessType_SuperUser
-		width: Theme.geometry_listItem_radius * 2
-		height: parent.height
-		color: Theme.color_listItem_highAccessLevel
-		radius: Theme.geometry_listItem_radius
 
-		Rectangle {
-			x: Theme.geometry_listItem_radius
-			width: Theme.geometry_listItem_radius
-			height: parent.height
-			color: root.background.color
+	Connections {
+		target: ToastModel
+		function onDismissRequested(modelId) {
+			if (root.toast === modelId) {
+				root.toast = 0
+			}
 		}
+		function onCloseRequested(modelId) {
+			if (root.toast === modelId) {
+				root.toast = 0
+			}
+		}
+		function onRemoved(modelId) {
+			if (root.toast === modelId) {
+				root.toast = 0
+			}
+		}
+	}
+
+	// Show thin colored indicator on left side if settings is only visible to super/service users
+	// Also show the indicator for list items from gui plugins.
+	Rectangle {
+		visible: color.a > 0.0
+		height: parent.height
+		width: Theme.geometry_listItem_radius
+		topLeftRadius: Theme.geometry_listItem_radius
+		bottomLeftRadius: Theme.geometry_listItem_radius
+		color: root.showAccessLevel >= VenusOS.User_AccessType_SuperUser
+			? Theme.color_listItem_highAccessLevel : root.indicatorColor
 	}
 
 	ListPressArea {
 		id: pressArea
-
-		property ToastNotification toast: null
-
 		anchors.fill: parent
 		radius: root.background.radius
+		enabled: root.pressAreaEnabled
 		effectEnabled: root.interactive
 		onClicked: root.activate()
-
-		Connections {
-			target: pressArea.toast
-			function onDismissed() {
-				pressArea.toast = null
-			}
-		}
 	}
 
 	GridLayout {
@@ -150,7 +174,6 @@ BaseListItem {
 			Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
 			font.pixelSize: flat ? Theme.font_size_body1 : Theme.font_size_body2
 			wrapMode: Text.Wrap
-			width: root.availableWidth - content.width - Theme.geometry_listItem_content_spacing
 		}
 
 		Row {
@@ -175,6 +198,8 @@ BaseListItem {
 			Layout.bottomMargin: Theme.geometry_listItem_content_verticalMargin
 
 			Label {
+				id: captionLabel
+
 				width: parent.width
 				visible: text !== ""
 				topPadding: 0

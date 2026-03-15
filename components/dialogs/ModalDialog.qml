@@ -22,6 +22,7 @@ T.Dialog {
 	property color backgroundColor: Theme.color_background_secondary
 	property int dialogDoneOptions: VenusOS.ModalDialog_DoneOptions_SetAndCancel
 	property alias canAccept: doneButton.enabled
+	property alias titleTextFormat: headerLabel.textFormat
 	readonly property real centeredY: (parent.height - height) / 2
 
 	// Optional functions: called when accept/reject is attempted.
@@ -61,9 +62,7 @@ T.Dialog {
 		// Give the initial focus to this content item so that child UI controls will receive focus.
 		focus: true
 
-		KeyNavigation.down: root.footer
-		Keys.onReturnPressed: root.handleAccept()
-		Keys.onEnterPressed: root.handleAccept()
+		KeyNavigation.down: Global.keyNavigationEnabled ? root.footer : null
 		Keys.onEscapePressed: root.handleReject()
 		Keys.enabled: Global.keyNavigationEnabled
 	}
@@ -79,7 +78,7 @@ T.Dialog {
 	makes it scale properly when you shrink the window. See https://bugreports.qt.io/browse/QTBUG-127068
 	*/
 	width: Theme.geometry_modalDialog_width
-	height: Theme.geometry_modalDialog_height
+	height: Math.max(Theme.geometry_modalDialog_height, (header ? header.height : 0) + contentHeight + (footer ? footer.height : 0))
 	verticalPadding: 0
 	horizontalPadding: 0
 	modal: true
@@ -90,10 +89,18 @@ T.Dialog {
 	// would be received. So, just enable it when the dialog is opened, if key nav is enabled.
 	focus: Global.keyNavigationEnabled
 
-	enter: Transition {
+	// Only provide transitions if animations are enabled. Ideally the transitions would always be
+	// set but with 'enabled' set to only run when needed, but due to QTBUG-142410 the enabled value
+	// is not respected.
+	enter: Global.animationEnabled ? enterTransition : null
+	exit: Global.animationEnabled ? exitTransition : null
+
+	Transition {
+		id: enterTransition
 		NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Theme.animation_page_fade_duration }
 	}
-	exit: Transition {
+	Transition {
+		id: exitTransition
 		NumberAnimation {
 			loops: Qt.platform.os == "wasm" ? 0 : 1 // workaround wasm crash, see https://bugreports.qt.io/browse/QTBUG-121382
 			property: "opacity"; from: 1.0; to: 0.0; duration: Theme.animation_page_fade_duration
@@ -142,7 +149,7 @@ T.Dialog {
 		}
 	}
 
-	footer: Item { // #2161 make this a FocusScope when key nav is re-enabled
+	footer: FocusScope {
 		visible: root.dialogDoneOptions !== VenusOS.ModalDialog_DoneOptions_NoOptions
 		height: visible ? Theme.geometry_modalDialog_footer_height : 0
 		focus: false
@@ -269,6 +276,7 @@ T.Dialog {
 			transitions: [
 				Transition {
 					to: "*"
+					enabled: Global.animationEnabled
 					NumberAnimation {
 						target: root
 						property: "y"
@@ -287,6 +295,16 @@ T.Dialog {
 		z: -1
 		enabled: !!stateManager.inputItem
 		onClicked: focus = true
+	}
+
+	Component.onCompleted: {
+		if (Global.main && Global.main.requiresRotation) {
+			// we cannot manually position the header or footer.
+			// just reject the dialog for now.
+			// TODO: use eglfs and rotate the entire surface.
+			// See: issue #2702.
+			Qt.callLater(reject)
+		}
 	}
 }
 

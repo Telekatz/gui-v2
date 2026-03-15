@@ -98,7 +98,7 @@ Rectangle {
 	}
 
 	transitions: Transition {
-		enabled: root.animateGeometry
+		enabled: root.animationEnabled && root.animateGeometry
 
 		NumberAnimation {
 			properties: "y,height,verticalMargin"
@@ -109,6 +109,7 @@ Rectangle {
 
 	Keys.onSpacePressed: clicked()
 	Keys.enabled: Global.keyNavigationEnabled
+	KeyNavigationHighlight.active: root.activeFocus
 
 	Item {
 		id: header
@@ -149,10 +150,5 @@ Rectangle {
 		radius: root.radius
 		anchors.fill: parent
 		onClicked: root.clicked()
-	}
-
-	KeyNavigationHighlight {
-		anchors.fill: parent
-		active: root.activeFocus
 	}
 }

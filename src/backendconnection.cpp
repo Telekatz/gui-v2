@@ -5,6 +5,7 @@
 
 #include "backendconnection.h"
 #include "veqitemmockproducer.h"
+#include "basedevice.h"
 #include "enums.h"
 
 #if defined(VENUS_WEBASSEMBLY_BUILD)
@@ -198,11 +199,13 @@ void BackendConnection::initDBusConnection(const QString &address)
 	QDBusConnection dbus = VeDbusConnection::getConnection();
 	if (!dbus.isConnected()) {
 		qWarning() << "D-Bus connection failed!";
+		emit producerChanged();
 		setState(Failed);
 		return;
 	}
 
 	dbusProducer->open(dbus);
+	emit producerChanged();
 
 	setState(VeDbusConnection::getConnection().isConnected());
 }
@@ -269,7 +272,13 @@ void BackendConnection::openUrl(const QString &url)
 
 void BackendConnection::hitWatchdog()
 {
-	emscripten_run_script("watchdogHit = true"); // 'watchdogHit' is defined in index.html, which checks it periodically and reloads the page if not hit regularly.
+	// 'watchdogHit' and 'guiv2initialized' are defined in index.html.
+	// After this function sets 'guiv2initialized' to true, a timer in index.html periodically:
+	//	1. checks watchdogHit - if false, reloads the page.
+	//	2. sets 'watchdogHit' to false.
+
+	emscripten_run_script("if (typeof watchdogHit !== 'undefined') watchdogHit = true");
+	emscripten_run_script("if (typeof guiv2initialized !== 'undefined') guiv2initialized = true");
 }
 
 #else
@@ -348,13 +357,14 @@ void BackendConnection::initMqttConnection(const QString &address)
 		mqttProducer->open(QHostAddress(address), 1883);
 	}
 #endif
+	emit producerChanged();
 }
 
 void BackendConnection::initMockConnection()
 {
 	VeQItemMockProducer *producer = new VeQItemMockProducer(VeQItems::getRoot(), "mock");
 	m_producer = producer;
-	producer->initialize();
+	emit producerChanged();
 	setState(true);
 }
 
@@ -368,6 +378,7 @@ void BackendConnection::setType(const SourceType type, const QString &address)
 	if (m_producer) {
 		m_producer->deleteLater();
 		m_producer = nullptr;
+		emit producerChanged();
 	}
 
 	switch (type) {
@@ -638,11 +649,29 @@ void BackendConnection::setNeedsWasmKeyboardHandler(bool needsWasmKeyboardHandle
 	}
 }
 
+bool BackendConnection::msaaEnabled() const
+{
+	return m_msaaEnabled;
+}
+
+void BackendConnection::setMsaaEnabled(bool e)
+{
+	if (m_msaaEnabled != e) {
+		m_msaaEnabled = e;
+		emit msaaEnabledChanged();
+	}
+}
+
 QUrl BackendConnection::demoImageFileName() const
 {
 	static const QUrl filePath = QUrl::fromLocalFile("/data/demo-brief.png");
 	static const bool fileExists = QFile::exists(filePath.toLocalFile());
 	return fileExists ? filePath : QUrl();
+}
+
+VeQItemProducer *BackendConnection::producer() const
+{
+	return m_producer;
 }
 
 QString BackendConnection::serviceUidForType(const QString &serviceType) const
@@ -663,21 +692,7 @@ QString BackendConnection::serviceUidForType(const QString &serviceType) const
 
 QString BackendConnection::serviceTypeFromUid(const QString &uid) const
 {
-	switch (type()) {
-	case UnknownSource:
-		break;
-	case DBusSource:
-	case MockSource:
-	{
-		// uid format is "<dbus|mock>/com.victronenergy.<serviceType>[.suffix]/*"
-		const QString serviceTypePart = uid.split('/').value(1);
-		return serviceTypePart.split('.').value(2);
-	}
-	case MqttSource:
-		// uid format is "mqtt/<serviceType>/*"
-		return uid.split('/').value(1);
-	}
-	return QString();
+	return BaseDevice::serviceTypeFromUid(uid);
 }
 
 QString BackendConnection::serviceUidFromName(const QString &serviceName, int deviceInstance) const
@@ -755,21 +770,6 @@ QVariantMap BackendConnection::portableIdInfo(const QString &portableId) const
 	return map;
 }
 
-void BackendConnection::setMockValue(const QString &uid, const QVariant &value)
-{
-	if (VeQItemMockProducer *producer = qobject_cast<VeQItemMockProducer *>(m_producer)) {
-		producer->setValue(uid, value);
-	}
-}
-
-QVariant BackendConnection::mockValue(const QString &uid) const
-{
-	if (VeQItemMockProducer *producer = qobject_cast<VeQItemMockProducer *>(m_producer)) {
-		return producer->value(uid);
-	}
-	return QVariant();
-}
-
 BackendConnectionTester::BackendConnectionTester()
 {
 	mqttBackend.setType(Victron::VenusOS::BackendConnection::SourceType::MqttSource);
@@ -781,6 +781,40 @@ void BackendConnectionTester::qmlEngineAvailable(QQmlEngine *engine)
 	// Initialization requiring the QQmlEngine to be constructed
 	engine->rootContext()->setContextProperty("mqttBackend", &mqttBackend);
 	engine->rootContext()->setContextProperty("dbusBackend", &dbusBackend);
+}
+
+void BackendConnection::setNodeRedUrl(const QString &url)
+{
+	if (m_nodeRedUrl != url) {
+		m_nodeRedUrl = url;
+		emit nodeRedUrlChanged();
+	}
+}
+
+QString BackendConnection::nodeRedUrl() const
+{
+	if (m_nodeRedUrl.isEmpty()) {
+		return QStringLiteral("https://venus.local:1881");
+	} else {
+		return m_nodeRedUrl;
+	}
+}
+
+void BackendConnection::setSignalKUrl(const QString &url)
+{
+	if (m_signalKUrl != url) {
+		m_signalKUrl = url;
+		emit signalKUrlChanged();
+	}
+}
+
+QString BackendConnection::signalKUrl() const
+{
+	if (m_signalKUrl.isEmpty()) {
+		return QStringLiteral("https://venus.local:3000");
+	} else {
+		return m_signalKUrl;
+	}
 }
 
 }

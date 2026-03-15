@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
 ListItem {
@@ -14,6 +13,7 @@ ListItem {
 	property alias textField: textField
 	property alias secondaryText: textField.text
 	property alias placeholderText: textField.placeholderText
+	property int echoMode: TextInput.Normal
 	property string suffix
 	property var flickable: root.ListView ? root.ListView.view : null
 
@@ -22,6 +22,8 @@ ListItem {
 	//   Utils.validationResult() to describe the validation result.
 	// - saveInput: saves the text field input. The default implementation saves the value to the
 	//   dataItem, if it has a valid uid.
+	// - validateOnFocusLost: whether the text should be validated when it loses active focus
+	//   (default is true).
 	//
 	// When the text field loses focus or is accepted, validateInput is called; if it returns a result
 	// of InputValidation_Result_OK or InputValidation_Result_Warning, then saveInput() is called.
@@ -33,8 +35,8 @@ ListItem {
 			dataItem.setValue(textField.text)
 		}
 	}
+	property bool validateOnFocusLost: true
 
-	signal editingFinished()
 	signal accepted()
 
 	interactive: (dataItem.uid === "" || dataItem.valid)
@@ -73,13 +75,13 @@ ListItem {
 
 		// If attempting to save, then show any errors and adjust the input text.
 		if (mode === VenusOS.InputValidation_ValidateAndSave) {
-			if (textField.currentNotification) {
-				textField.currentNotification.close(true)
+			if (root.toast) {
+				ToastModel.requestClose(root.toast)
 			}
 			if (result.notificationText.length > 0) {
 				const notificationType = result.status === VenusOS.InputValidation_Result_Error ? VenusOS.Notification_Alarm
 						: VenusOS.Notification_Info
-				textField.currentNotification = Global.showToastNotification(notificationType, result.notificationText, 5000)
+				root.toast = Global.showToastNotification(notificationType, result.notificationText, 5000)
 			}
 			if (result.adjustedText != null) {
 				textField.text = result.adjustedText
@@ -117,9 +119,10 @@ ListItem {
 	property TextField defaultContent: TextField {
 		id: textField
 
-		property var currentNotification
+		property string _initialText
 		property bool _showErrorHighlight
 		property bool _validateBeforeSaving
+		property bool _inputCancelled
 
 		enabled: root.clickable
 		visible: root.clickable
@@ -130,6 +133,8 @@ ListItem {
 		rightPadding: suffixLabel.text.length ? suffixLabel.implicitWidth : leftPadding
 		horizontalAlignment: root.suffix ? Text.AlignRight : Text.AlignHCenter
 		borderColor: _showErrorHighlight ? Theme.color_red : Theme.color_ok
+		focusPolicy: Qt.ClickFocus
+		echoMode: root.echoMode
 
 		onTextEdited: {
 			// When the input is marked as invalid, run the validation again each time the input is
@@ -138,10 +143,9 @@ ListItem {
 			if (_showErrorHighlight && root.runValidation(VenusOS.InputValidation_ValidateOnly) !== VenusOS.InputValidation_Result_Error) {
 				_showErrorHighlight = false
 			}
-			// Close error notification if visible.
-			if (textField.currentNotification) {
-				textField.currentNotification.close(false)
-				textField.currentNotification = null
+			// Dismiss error notification if visible.
+			if (root.toast) {
+				ToastModel.requestDismiss(root.toast)
 			}
 			_validateBeforeSaving = true
 		}
@@ -159,18 +163,34 @@ ListItem {
 		}
 
 		onActiveFocusChanged: {
-			// When focus is lost and the text was changed, validate and save the text.
-			if (_validateBeforeSaving) {
-				_showErrorHighlight = root.runValidation(VenusOS.InputValidation_ValidateAndSave) === VenusOS.InputValidation_Result_Error
+			if (activeFocus) {
+				_initialText = text
+			} else if (_validateBeforeSaving && !_inputCancelled) {
+				if (validateOnFocusLost) {
+					// When focus is lost and the text was changed, validate and save the text.
+					_showErrorHighlight = root.runValidation(VenusOS.InputValidation_ValidateAndSave) === VenusOS.InputValidation_Result_Error
+				}
 				_validateBeforeSaving = false
 			}
-			root.editingFinished()
 		}
 
-		// Consume arrow key events so that they do not go higher up the item hierarchy and trigger
-		// key navigation events while the text field is focused.
-		Keys.onLeftPressed: {}
-		Keys.onRightPressed: {}
+		// When the cursor is on the left/right edges, consume left/right key events so that they do
+		// not travel higher up the item hierarchy and activate key navigation.
+		Keys.onLeftPressed: (event) => { event.accepted = textField.activeFocus && textField.cursorPosition === 0 }
+		Keys.onRightPressed: (event) => { event.accepted = textField.activeFocus && textField.cursorPosition === textField.text.length }
+
+		// When the text field is focused, consume up/down key events so that the user does not
+		// activate key navigation and move the focus elsewhere if the text is not yet accepted.
+		Keys.onUpPressed: (event) => { event.accepted = textField.activeFocus }
+		Keys.onDownPressed: (event) => { event.accepted = textField.activeFocus }
+
+		// When escape is pressed, revert to the original text.
+		Keys.onEscapePressed: {
+			text = _initialText
+			_inputCancelled = true // flag to prevent validation from running when focus is lost
+			focus = false
+			_inputCancelled = false
+		}
 
 		Label {
 			id: suffixLabel
@@ -200,12 +220,10 @@ ListItem {
 		readonlyLabel
 	]
 
-	SecondaryListLabel {
-		id: readonlyLabel
-
-		text: textField.text.length > 0 ? textField.text : "--"
+	readonly property SecondaryListLabel readonlyLabel: SecondaryListLabel {
+		text: textField.text.length > 0 ? textField.text + root.suffix : "--"
 		width: Math.min(implicitWidth, root.maximumContentWidth)
-		visible: !textField.visible
+		visible: !textField.visible && textField.echoMode !== TextInput.Password
 	}
 
 	VeQuickItem {

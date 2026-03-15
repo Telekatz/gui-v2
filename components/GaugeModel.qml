@@ -125,11 +125,12 @@ ListModel {
 			readonly property real remaining: item?.remaining ?? NaN
 			readonly property int valueType: properties.valueType ?? VenusOS.Gauges_ValueType_NeutralPercentage
 			readonly property color color: properties.color ?? Theme.color_ok
-
 			readonly property var properties: type >= 0 ? Gauges.tankProperties(type) : ({})
 
-			function _updateGaugeModel() {
-				if (root) { // may be null if this object has been destroyed after the Qt.callLater() call
+			property bool canUpdate
+
+			function updateGaugeModel() {
+				if (canUpdate) {
 					root._updateGauge(index, gaugeObject)
 				}
 			}
@@ -141,15 +142,17 @@ ListModel {
 
 			// If tank data changes, update the model at the end of the event loop to avoid
 			// excess updates if multiple values change simultaneously for the same tank.
-			onNameChanged: Qt.callLater(_updateGaugeModel)
-			onIconChanged: Qt.callLater(_updateGaugeModel)
-			onLevelChanged: Qt.callLater(_updateGaugeModel)
+			onNameChanged: Qt.callLater(updateGaugeModel)
+			onIconChanged: Qt.callLater(updateGaugeModel)
+			onLevelChanged: Qt.callLater(updateGaugeModel)
+
+			Component.onDestruction: canUpdate = false
 
 			Connections {
 				target: Global.systemSettings.briefView.unit
 
 				function onValueChanged() {
-					Qt.callLater(_updateGaugeModel)
+					Qt.callLater(updateGaugeModel)
 				}
 			}
 
@@ -182,6 +185,7 @@ ListModel {
 							battery.icon = batteryIcon
 							battery.level = batteryLevel
 						}
+						Component.onCompleted: onValueChanged()
 					}
 				}
 			}
@@ -207,7 +211,7 @@ ListModel {
 							: !isNaN(_tankModel.averageLevel) ? _tankModel.averageLevel
 							: (_tankModel.count === 0 || _tankModel.totalCapacity === 0) ? 0
 							: ((Math.min(_tankModel.totalRemaining / _tankModel.totalCapacity, 1.0) * 100))
-					remaining: Units.convert(_tankModel.totalRemaining, VenusOS.Units_Volume_CubicMeter, Global.systemSettings.volumeUnit)
+					remaining: Units.convert(_tankModel.totalRemaining, VenusOS.Units_Volume_CubicMetre, Global.systemSettings.volumeUnit)
 				}
 			}
 
@@ -215,26 +219,44 @@ ListModel {
 				id: tankIdSource
 
 				GaugeSource {
-					readonly property Tank _device: _findTank()
+					property Tank _device
+					readonly property int totalTankCount: Global.tanks.totalTankCount
 
-					function _findTank() {
+					function _updateTank() {
+						if (_device?.valid) {
+							return
+						}
 						const tankIdInfo = BackendConnection.portableIdInfo(gaugeObject.modelData.value)
 						for (const tankModel of Global.tanks.allTankModels) {
 							const tank = tankModel.deviceForDeviceInstance(tankIdInfo.instance)
 							if (tank) {
-								return tank
+								_device = tank
+								break
 							}
 						}
-						return null
 					}
 
 					name: _device?.name || ""
 					type: _device?.type ?? -1
 					level: _device?.level ?? NaN
-					remaining: Units.convert(_device?.remaining ?? NaN, VenusOS.Units_Volume_CubicMeter, Global.systemSettings.volumeUnit)
+					remaining: Units.convert(_device?.remaining ?? NaN, VenusOS.Units_Volume_CubicMetre, Global.systemSettings.volumeUnit)
+
+					// Set tank on initialization, or when tanks are updated, in case the tank is
+					// disconnected and reconnected.
+					onTotalTankCountChanged: _updateTank()
+					Component.onCompleted: _updateTank()
 				}
 			}
 		}
+
+		onObjectAdded: (index, gaugeObject) => {
+			gaugeObject.canUpdate = true
+			Qt.callLater(gaugeObject.updateGaugeModel)
+		}
+		onObjectRemoved: (index, gaugeObject) => {
+			gaugeObject.canUpdate = false
+		}
+
 	}
 
 	property Connections _tankCountConn: Connections {

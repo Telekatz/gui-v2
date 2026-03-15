@@ -1,0 +1,64 @@
+/*
+** Copyright (C) 2025 Victron Energy B.V.
+** See LICENSE.txt for license information.
+*/
+
+#ifndef VICTRON_GUIV2_FILTEREDSERVICEMODEL_H
+#define VICTRON_GUIV2_FILTEREDSERVICEMODEL_H
+
+#include <QStringList>
+#include <QQmlParserStatus>
+#include <QSortFilterProxyModel>
+#include <qqmlintegration.h>
+
+namespace Victron {
+namespace VenusOS {
+
+/*
+	Provides a service model that can be filtered based on the service type.
+*/
+class FilteredServiceModel : public QSortFilterProxyModel, public QQmlParserStatus
+{
+	Q_OBJECT
+	QML_ELEMENT
+	Q_INTERFACES(QQmlParserStatus)
+	Q_PROPERTY(int count READ count NOTIFY countChanged)
+	Q_PROPERTY(QString firstUid READ firstUid NOTIFY firstUidChanged)
+	Q_PROPERTY(QStringList serviceTypes READ serviceTypes WRITE setServiceTypes NOTIFY serviceTypesChanged)
+
+public:
+	explicit FilteredServiceModel(QObject *parent = nullptr);
+
+	int count() const;
+	QString firstUid() const;
+
+	QStringList serviceTypes() const;
+	void setServiceTypes(const QStringList &serviceTypes);
+
+	void classBegin() override;
+	void componentComplete() override;
+
+	Q_INVOKABLE QString uidAt(int index) const;
+
+Q_SIGNALS:
+	void countChanged();
+	void firstUidChanged();
+	void serviceTypesChanged();
+
+protected:
+	bool filterAcceptsRow(int sourceRow, const QModelIndex & sourceParent) const override;
+
+private:
+	void updateCount();
+
+	QStringList m_serviceTypes;
+	QString m_firstUid;
+	int m_count = 0;
+	bool m_completed = false;
+};
+
+} /* VenusOS */
+} /* Victron */
+
+#endif // VICTRON_GUIV2_FILTEREDSERVICEMODEL_H
+

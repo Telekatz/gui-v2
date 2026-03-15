@@ -5,7 +5,6 @@
 
 import QtQuick
 import Victron.VenusOS
-import QtQuick.Controls as C
 import QtQuick.Controls.impl as CP
 
 ControlCard {
@@ -21,7 +20,7 @@ ControlCard {
 		}
 		width: parent.width
 
-		C.ButtonGroup {
+		ButtonGroup {
 			id: stateRadioButtonGroup
 		}
 
@@ -29,16 +28,17 @@ ControlCard {
 			id: repeater
 
 			width: parent.width
-			model: Global.ess.stateModel
+			model: Global.systemSettings.ess.stateModel
 			delegate: SettingsColumn {
 				width: parent.width
 
 				ListRadioButton {
+					writeAccessLevel: VenusOS.User_AccessType_User
 					text: modelData.display
 					flat: true
-					checked: Global.ess.state === modelData.value
-					C.ButtonGroup.group: stateRadioButtonGroup
-					onClicked: Global.ess.setStateRequested(modelData.value)
+					checked: Global.systemSettings.ess.state === modelData.value
+					ButtonGroup.group: stateRadioButtonGroup
+					onClicked: Global.systemSettings.ess.setState(modelData.value)
 				}
 
 				FlatListItemSeparator {}
@@ -46,37 +46,54 @@ ControlCard {
 		}
 
 		ListButton {
+			id: minSocLimit
+
 			//% "Minimum SOC"
 			text: qsTrId("ess_card_minimum_soc")
 			flat: true
-			secondaryText: Units.getCombinedDisplayText(VenusOS.Units_Percentage, Global.ess.minimumStateOfCharge)
+			secondaryText: Units.getCombinedDisplayText(VenusOS.Units_Percentage, Global.systemSettings.ess.minimumStateOfCharge)
+			preferredVisible: essMode.value !== VenusOS.Ess_Hub4ModeState_Disabled
+				&& batteryLifeState.value !== VenusOS.Ess_BatteryLifeState_KeepCharged
+			writeAccessLevel: VenusOS.User_AccessType_User
 			onClicked: Global.dialogLayer.open(minSocDialogComponent)
 
 			Component {
 				id: minSocDialogComponent
 
 				ESSMinimumSOCDialog {
-					minimumStateOfCharge: Global.ess.minimumStateOfCharge
-					onAccepted: Global.ess.setMinimumStateOfChargeRequested(minimumStateOfCharge)
+					minimumStateOfCharge: Global.systemSettings.ess.minimumStateOfCharge
+					onAccepted: Global.systemSettings.ess.setMinimumStateOfCharge(minimumStateOfCharge)
 				}
+			}
+
+			VeQuickItem {
+				id: batteryLifeState
+				uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/BatteryLife/State"
+			}
+
+			VeQuickItem {
+				id: essMode
+				uid: Global.systemSettings.serviceUid + "/Settings/CGwacs/Hub4Mode"
 			}
 		}
 
-		FlatListItemSeparator { visible: batteryLifeLimitWarning.visible}
+		FlatListItemSeparator { visible: minSocLimit.visible && activeSocLimit.visible}
 
-		ListItem {
-			id: batteryLifeLimitWarning
+		ListInfoLabel {
+			id: activeSocLimit
 
-			visible: Global.ess.state === VenusOS.Ess_State_OptimizedWithBatteryLife
-			//% "Battery life limit: %1%"
-			text: qsTrId("ess_battery_life_limit").arg(Math.max(Global.ess.minimumStateOfCharge, Global.ess.stateOfChargeLimit))
+			preferredVisible: Global.systemSettings.ess.state === VenusOS.Ess_State_OptimizedWithBatteryLife
+			//% "Active SOC Limit: %1%"
+			text: qsTrId("ess_active_soc_limit").arg(Math.max(Global.systemSettings.ess.minimumStateOfCharge, Global.systemSettings.ess.stateOfChargeLimit))
 			flat: true
-			content.children: [
-				CP.IconImage {
-					source: "qrc:/images/information.svg"
-					color: Theme.color_blue
+
+			PressArea {
+				anchors.fill: parent
+				onClicked: {
+					//% "BatteryLife dynamically adjusts the minimum battery state of charge to prevent deep discharges and ensure regular full charges, helping to prolong battery life and maintain system reliability."
+					Global.showToastNotification(VenusOS.Notification_Info, qsTrId("ess_active_soc_limit_info"), 10000)
 				}
-			]
+			}
 		}
 	}
 }

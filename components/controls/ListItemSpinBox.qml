@@ -57,8 +57,6 @@ ListItemButton {
 				}
 				root.selectorAccepted(value)
 			}
-			onMinValueReached: root.minValueReached()
-			onMaxValueReached: root.maxValueReached()
 		}
 	}
 

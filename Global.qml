@@ -12,12 +12,8 @@ QtObject {
 	property var main
 	property var pageManager
 	property var mainView
-	property var mockDataSimulator    // only valid when mock mode is active
-	property var dataManager
-	property VeQItemTableModel dataServiceModel: null
 	property var firmwareUpdate
-	property var allDevicesModel
-	property bool applicationActive: true
+	property bool applicationActive: true // i.e. not in Idle mode
 	property bool keyNavigationEnabled
 
 	readonly property bool backendReady: BackendConnection.state === BackendConnection.Ready
@@ -28,21 +24,19 @@ QtObject {
 	readonly property string quantityFontFamily: _quantityFontLoader.name
 	property var dialogLayer
 	property var notificationLayer
-	property ScreenBlanker screenBlanker
 	property bool displayCpuUsage
-	property bool pauseElectronAnimations
+	readonly property bool animationEnabled: (systemSettings?.animationEnabled ?? true) && BackendConnection.applicationVisible && !ScreenBlanker.blanked
+	readonly property bool timersEnabled: BackendConnection.applicationVisible && !ScreenBlanker.blanked
 
 	// data sources
 	property var acInputs
 	property var dcInputs
 	property var environmentInputs
-	property var ess
 	property var evChargers
 	property var generators
 	property var inverterChargers
 	property var notifications
-	property var pvInverters
-	property var solarDevices
+	property var solarInputs
 	property var system
 	property var switches
 	property var systemSettings
@@ -61,21 +55,16 @@ QtObject {
 	property bool isGxDevice: Qt.platform.os === "linux" && !isDesktop
 	property real scalingRatio: 1.0
 
-	property bool animationEnabled: true // for mock mode only.
-
 	readonly property int int32Max: _intValidator.top
 	readonly property int int32Min: _intValidator.bottom
 
 	property bool backendReadyLatched
 	onBackendReadyChanged: if (backendReady) backendReadyLatched = true
 
-	signal aboutToFocusTextField(var textField, var textFieldContainer, var flickable)
+	signal aboutToFocusTextField(var textField, var textFieldContainer, var viewToScroll)
 
-	function showToastNotification(category, text, autoCloseInterval = 0) {
-		if (!!notificationLayer) {
-			return notificationLayer.showToastNotification(category, text, autoCloseInterval)
-		}
-		return null
+	function showToastNotification(type, text, autoCloseInterval = 0) {
+		return ToastModel.add(type, text, autoCloseInterval)
 	}
 
 	function reset() {
@@ -86,24 +75,18 @@ QtObject {
 		// as main will never be destroyed during the ui rebuild.
 		pageManager = null
 		mainView = null
-		mockDataSimulator = null
-		dataManager = null
-		dataServiceModel = null
 		firmwareUpdate = null
-		allDevicesModel = null
 		dialogLayer = null
 		notificationLayer = null
 
 		acInputs = null
 		dcInputs = null
 		environmentInputs = null
-		ess = null
 		evChargers = null
 		generators = null
 		inverterChargers = null
 		notifications = null
-		pvInverters = null
-		solarDevices = null
+		solarInputs = null
 		system = null
 		systemSettings = null
 		tanks = null
@@ -123,5 +106,23 @@ QtObject {
 
 	readonly property IntValidator _intValidator: IntValidator {
 	}
+
+/*
+	readonly property VeQuickItem _guiPlugins: VeQuickItem {
+		// Only listen to the gui plugins MQTT path in WASM.
+		// GX and Desktop builds read gui plugins from filesystem instead.
+		// TODO: update the path to the correct MQTT-only path once it is decided.
+		uid: (Qt.platform.os === "wasm")
+			? pluginsService.serviceUid + "/Gui2/Plugins"
+			: ""
+		property string json: valid && BackendConnection.state === BackendConnection.Ready ? value : "[]"
+		onJsonChanged: {
+			// don't unload plugins if we lose backend data connection.
+			if (Qt.platform.os === "wasm" && BackendConnection.state === BackendConnection.Ready) {
+				GuiPluginLoader.pluginsJson = json
+			}
+		}
+	}
+*/
 }
 

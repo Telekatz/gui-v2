@@ -10,15 +10,13 @@ OverviewWidget {
 	id: root
 
 	onClicked: {
-		if ((Global.inverterChargers.veBusDevices.count
-				+ Global.inverterChargers.inverterDevices.count
-				+ Global.inverterChargers.chargerDevices.count
-				+ Global.inverterChargers.acSystemDevices.count) > 1) {
+		if (Global.inverterChargers.deviceCount > 1) {
 			Global.pageManager.pushPage("/pages/invertercharger/InverterChargerListPage.qml")
 		} else {
 			// Show page for chargers
-			if (Global.inverterChargers.chargerDevices.count) {
-				const charger = Global.inverterChargers.chargerDevices.firstObject
+			chargerModelLoader.active = true
+			if (chargerModelLoader.item.count > 0) {
+				const charger = chargerModelLoader.item.firstObject
 				Global.pageManager.pushPage("/pages/settings/devicelist/PageAcCharger.qml",
 						{ "bindPrefix": charger.serviceUid })
 			} else {
@@ -34,7 +32,7 @@ OverviewWidget {
 	title: qsTrId("overview_widget_inverter_title")
 	icon.source: "qrc:/images/inverter_charger.svg"
 	type: VenusOS.OverviewWidget_Type_VeBusDevice
-	enabled: !!Global.inverterChargers.firstObject || Global.inverterChargers.chargerDevices.count
+	enabled: !!Global.inverterChargers.firstObject
 	quantityLabel.visible: false
 	rightPadding: Theme.geometry_overviewPage_widget_sideGauge_margins
 	extraContentChildren: [
@@ -200,10 +198,18 @@ OverviewWidget {
 		sourceComponent: ThreePhaseBarGauge {
 			valueType: VenusOS.Gauges_ValueType_RisingPercentage
 			phaseModel: Global.system.load.ac.phases
-			phaseModelProperty: "current"
 			maximumValue: Global.system.load.maximumAcCurrent
 			animationEnabled: root.animationEnabled
 			inOverviewWidget: true
+		}
+	}
+
+	Loader {
+		id: chargerModelLoader
+		active: false
+		sourceComponent: FilteredDeviceModel {
+			serviceTypes: ["charger"]
+			sorting: FilteredDeviceModel.DeviceInstance
 		}
 	}
 }

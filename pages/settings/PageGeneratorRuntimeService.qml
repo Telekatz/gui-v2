@@ -89,6 +89,7 @@ Page {
 				//% "Reset daily run time counters"
 				text: qsTrId("page_settings_run_time_and_service_reset_daily_run_time_counters")
 				secondaryText: CommonWords.press_to_reset
+				writeAccessLevel: VenusOS.User_AccessType_User
 				onClicked: {
 					if (state.value === 0) {
 						var now = new Date()
@@ -119,7 +120,7 @@ Page {
 				preferredVisible: dataItem.valid && dataItem.value > 0
 
 				Timer {
-					running: parent.preferredVisible && root.animationEnabled
+					running: parent.preferredVisible && Global.timersEnabled
 					repeat: true
 					interval: 1000
 					onTriggered: {

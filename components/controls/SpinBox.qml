@@ -4,9 +4,7 @@
 */
 
 import QtQuick
-import QtQuick.Controls as C
-import QtQuick.Templates as CT
-import QtQuick.Controls.impl as CP
+import QtQuick.Templates as T
 import QtQuick.Layouts
 import Victron.VenusOS
 
@@ -14,257 +12,203 @@ import Victron.VenusOS
 // When the button is released, 'stepSize' reverts to its original value.
 // TODO - find a way to do this without exposing the changes to 'stepSize', as it may surprise developers when the value changes unexpectedly.
 
-CT.SpinBox {
+/*
+	Provides a SpinBox with key navigation features and an editable text input.
+
+	The up/down indicators can be clicked to increase/decrease the value. Alternatively, to change
+	the value when key navigation is enabled:
+
+	- When the contentItem is focused with the key navigation highlight, press Space to enter "edit"
+	mode. An orange frame with arrow hints appears around the text input, and pressing Up/Down will
+	increase/decrease the value. If SpinBox editable=true, a text cursor is shown and the text can
+	be edited directly.
+	- To exit "edit" mode, press Enter/Return to confirm the value, or Escape (to revert to the
+	previous value.
+	- Press left/right to move the key navigation focus between the up/down indicators and the text
+	input content item.
+
+	Or, when key navigation is not enabled:
+
+	- If SpinBox editable=true, a blue frame appears around the text. If the text is clicked, a
+	text cursor is shown and the text can be edited text directly. To remove the cursor and focus,
+	press Enter/Return to confirm the value, or Escape to revert to the previous value.
+*/
+T.SpinBox {
 	id: root
 
-	property alias textInput: primaryTextInput
 	property alias secondaryText: secondaryLabel.text
 	property int indicatorImplicitWidth: Theme.geometry_spinBox_indicator_minimumWidth
 	property int orientation: Qt.Horizontal
-	property alias suffix: suffixLabel.text
-
-	property int focusMode: Global.keyNavigationEnabled
-			? VenusOS.SpinBox_FocusMode_Navigate
-			: VenusOS.SpinBox_FocusMode_NoAction
+	property string suffix
+	property int fontPixelSize: secondaryText.length > 0 ? Theme.font_size_h2 : Theme.font_size_h3
 
 	property int _scalingFactor: 1
 	property int _originalStepSize
 
-	signal maxValueReached()
-	signal minValueReached()
-
-	function _handleContentItemKeyPress(event) {
-		// When key navigation is enabled, press space key to enter 'edit' mode. In edit mode:
-		// - an edit frame appears around the text, with up/down arrow indicators
-		// - up/down keys increases/decreases the value
-		// - left/right keys are disabled
-		// - enter/return/escape keys exit 'edit' mode (if text input is directly editable, the
-		//   text is also accepted)
-		//   (TODO: would be nice if Escape key reverted to previous value; currently it only does
-		//   this if the text input is directly editable)
-		switch (event.key) {
-		case Qt.Key_Space:
-			if (root.focusMode === VenusOS.SpinBox_FocusMode_Navigate) {
-				root.focusMode = VenusOS.SpinBox_FocusMode_Edit
-				if (root.editable) {
-					primaryTextInput.forceActiveFocus()
-				}
-				return true
-			}
-			break
-		case Qt.Key_Return:
-		case Qt.Key_Enter:
-		case Qt.Key_Escape:
-			if (root.focusMode === VenusOS.SpinBox_FocusMode_Edit) {
-				root.focusMode = VenusOS.SpinBox_FocusMode_Navigate
-				return true
-			}
-			break
-		case Qt.Key_Escape:
-			if (root.focusMode === VenusOS.SpinBox_FocusMode_Edit) {
-				root.focusMode = VenusOS.SpinBox_FocusMode_Navigate
-				return true
-			}
-			break
-		case Qt.Key_Up:
-		case Qt.Key_Down:
-			if (root.focusMode === VenusOS.SpinBox_FocusMode_Edit) {
-				if (event.key === Qt.Key_Up) {
-					root.increase()
-				} else {
-					root.decrease()
-				}
-				return true
-			}
-			break
-		case Qt.Key_Left:
-		case Qt.Key_Right:
-			if (root.focusMode === VenusOS.SpinBox_FocusMode_Edit) {
-				return true
-			}
-			break
-		}
-		return false
-	}
+	signal increaseFailed()
+	signal decreaseFailed()
 
 	implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
-		orientation === Qt.Horizontal
-			? valueColumn.width + up.indicator.width + down.indicator.width + (2 * spacing) + leftPadding + rightPadding
-			: valueColumn.width + leftPadding + rightPadding)
+			implicitContentWidth + leftPadding + rightPadding)
 	implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
-		orientation === Qt.Horizontal
-			? Math.max(valueColumn.height, up.indicator.height, down.indicator.height) + topPadding + bottomPadding
-			: valueColumn.height + up.indicator.height + down.indicator.height + (2 * spacing) + topPadding + bottomPadding)
-
+			implicitContentHeight + topPadding + bottomPadding)
+	leftPadding: orientation === Qt.Horizontal ? up.indicator.width + spacing : 0
+	rightPadding: orientation === Qt.Horizontal ? down.indicator.width + spacing : 0
+	topPadding: orientation === Qt.Vertical ? up.indicator.height + spacing : 0
+	bottomPadding: orientation === Qt.Vertical ? down.indicator.height + spacing : 0
 	spacing: Theme.geometry_spinBox_spacing
-	onValueModified: {
-		if (value === to) {
-			root.maxValueReached()
-		} else if (value === from) {
-			root.minValueReached()
-		}
+	validator: DoubleValidator {
+		locale: Units.numberFormattingLocaleName
 	}
 
-	onValueChanged: primaryTextInput.updateText()
+	// Update the displayed text when the initial value is set or when the up/down buttons are
+	// pressed.
+	onValueChanged: inputArea.setTextFromValue(value)
+	Component.onCompleted: inputArea.setTextFromValue(value)
 
-	Component.onCompleted: primaryTextInput.updateText()
+	contentItem: FocusScope {
+		id: spinBoxContentItem
 
-	contentItem: Item {
+		implicitWidth: contentArea.implicitWidth
+		implicitHeight: contentArea.implicitHeight
+
 		// needed for QQuickSpinBoxPrivate to read the "text" property of the contentItem
 		// so that it can call the valueFromText() function
-		readonly property alias text: primaryTextInput.text
+		readonly property alias text: inputArea.text
 
 		focus: Global.keyNavigationEnabled
 
-		Keys.onPressed: (event) => event.accepted = root._handleContentItemKeyPress(event)
-		Keys.enabled: Global.keyNavigationEnabled
-		KeyNavigation.left: root.down.indicator.enabled
-					&& root.focusMode === VenusOS.SpinBox_FocusMode_Navigate
-					&& root.orientation === Qt.Horizontal
-				? root.down.indicator
+		KeyNavigation.left: Global.keyNavigationEnabled && root.orientation === Qt.Horizontal
+				? downIndicatorPressArea
 				: null
-		KeyNavigation.right: root.up.indicator.enabled
-					&& root.focusMode === VenusOS.SpinBox_FocusMode_Navigate
-					&& root.orientation === Qt.Horizontal
-				? root.up.indicator
+		KeyNavigation.right: Global.keyNavigationEnabled && root.orientation === Qt.Horizontal
+				? upIndicatorPressArea
 				: null
-		KeyNavigation.up: root.up.indicator.enabled
-					&& root.focusMode === VenusOS.SpinBox_FocusMode_Navigate
-					&& root.orientation === Qt.Vertical
-				? root.up.indicator
+		KeyNavigation.up: Global.keyNavigationEnabled && root.orientation === Qt.Vertical
+				? downIndicatorPressArea
 				: null
-		KeyNavigation.down: root.down.indicator.enabled
-					&& root.focusMode === VenusOS.SpinBox_FocusMode_Navigate
-					&& root.orientation === Qt.Vertical
-				? root.down.indicator
+		KeyNavigation.down: Global.keyNavigationEnabled && root.orientation === Qt.Vertical
+				? upIndicatorPressArea
 				: null
 
-		Column {
-			id: valueColumn
+		// Called when a key is pressed while contentItem is focused, or when a key is pressed
+		// within the inner inputArea but not accepted there.
+		// The contentItem may be focused:
+		// - during key navigation, if it is explicitly selected by the user
+		// - indirectly, when the inner text input is clickable (as indicated by blue frame) and the
+		//   user clicks it to give it active focus
+		Keys.onPressed: (event) => {
+			switch (event.key) {
+			case Qt.Key_Space:
+				// When using key navigation, the Space key enters "edit" mode, where the
+				// upDownHintFrame is shown, and the text input area receives all key events.
+				if (Global.keyNavigationEnabled
+						// Don't activate if holding a press on the up/down buttons leads to this
+						// being focused.
+						&& !event.isAutoRepeat) {
+					inputArea.focus = true
+					event.accepted = true
+					return
+				}
+				break
+			case Qt.Key_Return:
+			case Qt.Key_Enter:
+			case Qt.Key_Escape:
+				if (upDownHintFrame.visible) {
+					// The user entered "edit" mode by pressing Space. Now move the focus back to
+					// the contentItem so key navigation can be used to navigate to the indicators.
+					inputArea.focus = false
+					event.accepted = true
+				} else if (clickableHintFrame.visible && inputArea.activeFocus) {
+					// The user entered "edit" mode by clicking within the blue frame.
+					// Remove the focus from the entire SpinBox, so that up/down keys do not trigger
+					// the default increase/decrease behaviour (as that should only occur when the
+					// orange up/down hint frame is shown).
+					root.focus = false
+					event.accepted = true
+				} else {
+					event.accepted = false
+				}
+				return
+			case Qt.Key_Up:
+			case Qt.Key_Down:
+				if (clickableHintFrame.visible) {
+					// Accept the event to prevent focus from moving elsewhere.
+					event.accepted = true
+					return
+				} else {
+					// Allow key navigation to move the focus elsewhere.
+				}
+				break
+			default:
+				break
+			}
+			event.accepted = false
+		}
 
-			width: Math.max(primaryTextInputItem.implicitWidth, secondaryLabel.implicitWidth)
+		KeyNavigationHighlight.active: Global.keyNavigationEnabled && activeFocus
+		KeyNavigationHighlight.fill: contentArea
+
+		// This acts like a Column but cannot be one, as KeyNavigationHighlight.fill injects the
+		// highlight as a child with anchor bindings, which cannot be used in Row/Column.
+		Item {
+			id: contentArea
+
 			anchors.centerIn: parent
+			implicitWidth: Math.max(inputArea.implicitWidth, secondaryLabel.implicitWidth) + 2*Theme.geometry_textField_horizontalMargin
+			implicitHeight: secondaryLabel.y + secondaryLabel.height
+			width: Math.min(implicitWidth, parent.width)
+			height: Math.min(implicitHeight, parent.height)
 
-			Item  {
-				id: primaryTextInputItem
+			SpinBoxInputArea {
+				id: inputArea
 
-				width: primaryRowLayout.implicitWidth + Theme.geometry_textField_horizontalMargin * 2
-				height: primaryRowLayout.height
-				anchors.horizontalCenter: parent.horizontalCenter
-
-				MouseArea {
-					anchors.fill: parent
-					enabled: root.editable
-					onClicked: primaryTextInput.forceActiveFocus()
-				}
-
-				RowLayout {
-					id: primaryRowLayout
-
-					anchors.centerIn: parent
-
-					TextInput {
-						id: primaryTextInput
-
-						color: root.enabled ? Theme.color_font_primary : Theme.color_background_disabled
-						font.family: Global.fontFamily
-						font.pixelSize: root.secondaryText.length > 0 ? Theme.font_size_h2 : Theme.font_size_h3
-						horizontalAlignment: Qt.AlignHCenter
-						verticalAlignment: Qt.AlignVCenter
-						selectedTextColor: Theme.color_white
-						selectionColor : Theme.color_blue
-						readOnly: !root.editable
-						selectByMouse: !readOnly
-						validator: root.validator
-						inputMethodHints: root.inputMethodHints
-
-						onActiveFocusChanged: {
-							if (activeFocus && Global.keyNavigationEnabled) {
-								root.focusMode = VenusOS.SpinBox_FocusMode_Edit
-							}
-						}
-
-						onAccepted: {
-							// Note that the text may at this time represent a value out of SpinBox
-							// to/from range, so clamp it here.
-							let v = root.valueFromText(text, root.locale)
-							if (v < root.from) {
-								v = root.from
-							} else if (v > root.to) {
-								v = root.to
-							}
-
-							// Force-update the displayed text, to guarantee the text is in sync
-							// with the numeric value, even if the value has not changed due to the
-							// user entering an out-of-range value on consecutive attempts.
-							text = root.textFromValue(v, root.locale)
-							root.value = v
-
-							primaryTextInput.focus = false
-						}
-
-						Keys.onEscapePressed: (event) => {
-							// Restore the previous value and clear the focus.
-							text = root.textFromValue(root.value, root.locale)
-							primaryTextInput.focus = false
-							if (Global.keyNavigationEnabled) {
-								root.focusMode = VenusOS.SpinBox_FocusMode_Navigate
-							}
-							event.accepted = true
-						}
-
-						function updateText() {
-							// Update the displayed text when the initial value is set or when
-							// the up/down buttons are pressed.
-							primaryTextInput.text = root.textFromValue(root.value, root.locale)
-						}
-					}
-
-					Label {
-						id: suffixLabel
-
-						visible: text.length
-						color: primaryTextInput.color
-						font: primaryTextInput.font
-						horizontalAlignment: primaryTextInput.horizontalAlignment
-						verticalAlignment: primaryTextInput.verticalAlignment
-					}
-				}
+				width: parent.width
+				clip: true
+				spinBox: root
+				suffix: root.suffix
+				fontPixelSize: root.fontPixelSize
+				arrowKeysEnabled: upDownHintFrame.visible
+				focus: false
+				onIncreaseFailed: root.increaseFailed()
+				onDecreaseFailed: root.decreaseFailed()
 			}
 
 			Label {
 				id: secondaryLabel
 
+				anchors {
+					top: inputArea.bottom
+					horizontalCenter: parent.horizontalCenter
+				}
+				width: parent.width
 				height: text.length ? implicitHeight : 0
 				color: Theme.color_font_secondary
 				font.pixelSize: Theme.font_size_caption
 				horizontalAlignment: Qt.AlignHCenter
 			}
-		}
 
-		// Shows a highlight box around the text when key navigation is enabled and the SpinBox is
-		// in navigation mode.
-		KeyNavigationHighlight {
-			id: navigationHighlight
-			anchors.centerIn: parent
-			width: primaryTextInputItem.width
-			height: valueColumn.height
-			active: Global.keyNavigationEnabled
-					&& root.focusMode === VenusOS.SpinBox_FocusMode_Navigate
-					&& parent.activeFocus
-		}
+			// Blue rectangle indicateing the text area is clickable for direct text editing, when
+			// editable=true. Not shown when key navigation highlight or orange frame are shown.
+			Rectangle {
+				id: clickableHintFrame
+				anchors.fill: parent
+				visible: root.editable
+						 && !upDownHintFrame.visible
+						 && !spinBoxContentItem.KeyNavigationHighlight.active
+				color: "transparent"
+				border.color: Theme.color_blue
+				border.width: Theme.geometry_focus_highlight_border_size
+				radius: Theme.geometry_button_radius
+			}
 
-		// Shows a box around the text when the SpinBox text can be edited directly (to indicate it
-		// can be clicked) or when key navigation is enabled and the SpinBox is in edit mode (to
-		// show up/down arrows indicating that the arrow keys can be used to change the value).
-		EditFrame {
-			anchors.fill: navigationHighlight
-			visible: !navigationHighlight.visible
-					&& (root.focusMode === VenusOS.SpinBox_FocusMode_Edit || root.editable)
-			border.color: root.focusMode === VenusOS.SpinBox_FocusMode_Edit
-				  ? Theme.color_focus_highlight
-				  : Theme.color_blue
-			arrowHintsVisible: root.focusMode === VenusOS.SpinBox_FocusMode_Edit
+			// Orange frame with arrow indicators, to hint that up/down keys will change the value,
+			// when key navigation is enabled.
+			EditFrame {
+				id: upDownHintFrame
+				anchors.fill: parent
+				visible: Global.keyNavigationEnabled && inputArea.activeFocus
+			}
 		}
 	}
 
@@ -274,7 +218,7 @@ CT.SpinBox {
 		   : contentItem.x + (contentItem.width / 2) - (width / 2)
 		y: orientation === Qt.Horizontal
 		   ? contentItem.y + (contentItem.height / 2) - (height / 2)
-		   : contentItem.y - root.spacing
+		   : contentItem.y + contentItem.height + root.spacing
 		implicitWidth: root.indicatorImplicitWidth
 		implicitHeight: Theme.geometry_spinBox_indicator_height
 		radius: Theme.geometry_spinBox_indicator_radius
@@ -282,21 +226,10 @@ CT.SpinBox {
 			   ? (root.up.pressed ? Theme.color_button_down : Theme.color_button)
 			   : Theme.color_background_disabled
 
-		KeyNavigation.left: orientation === Qt.Horizontal ? root.contentItem : null
-		KeyNavigation.down: orientation === Qt.Vertical ? root.contentItem : null
-		Keys.onSpacePressed: {
-			root.increase()
-			if (!enabled) {
-				// Ensure focus is not in limbo if the button becomes disabled
-				root.contentItem.focus = true
-			}
-		}
-		Keys.enabled: Global.keyNavigationEnabled
-
-		KeyNavigationHighlight {
-			anchors.fill: parent
-			active: parent.activeFocus
-		}
+		// Disable up/down indicators while text is edited directly, as indicators increase/decrease
+		// based on the actual SpinBox value, which may be different from the value shown by the
+		// text input if it has not yet been accepted.
+		enabled: !inputArea.activeFocus && root.value < root.to
 
 		Image {
 			anchors.centerIn: parent
@@ -311,35 +244,77 @@ CT.SpinBox {
 		   : contentItem.x + (contentItem.width / 2) - (width / 2)
 		y: orientation === Qt.Horizontal
 		   ? contentItem.y + (contentItem.height / 2) - (height / 2)
-		   : contentItem.y + root.spacing + contentItem.height - height
+		   : contentItem.y - root.spacing - height
 		implicitWidth: root.indicatorImplicitWidth
 		implicitHeight: Theme.geometry_spinBox_indicator_height
 		radius: Theme.geometry_spinBox_indicator_radius
 		color: enabled
-			   ? (root.down.pressed ? Theme.color_button_down : Theme.color_button)
+			   ? (downIndicatorPressArea.pressed ? Theme.color_button_down : Theme.color_button)
 			   : Theme.color_background_disabled
-
-		KeyNavigation.right: orientation === Qt.Horizontal ? root.contentItem : null
-		KeyNavigation.up: orientation === Qt.Vertical ? root.contentItem : null
-		Keys.onSpacePressed: {
-			root.decrease()
-			if (!enabled) {
-				// Ensure focus is not in limbo if the button becomes disabled
-				root.contentItem.focus = true
-			}
-		}
-		Keys.enabled: Global.keyNavigationEnabled
-
-		KeyNavigationHighlight {
-			anchors.fill: parent
-			active: parent.activeFocus
-		}
+		enabled: !inputArea.activeFocus && root.value > root.from
 
 		Image {
 			anchors.centerIn: parent
 			source: 'qrc:/images/icon_minus.svg'
 			opacity: root.enabled ? 1.0 : 0.4 // TODO add Theme opacity constants
 		}
+	}
+
+	// Add extra PressAreas above the up/down indicators that are always clickable, unlike the
+	// up/down indicators which are disabled by the SpinBox implementation when the upper/lower
+	// limits are reached. This allows increaseFailed() and decreaseFailed() to be emitted when the
+	// user tries to go beyond the limits.
+	PressArea {
+		id: upIndicatorPressArea
+
+		function activate() {
+			if (!root.up.indicator.enabled) {
+				root.increaseFailed()
+				return
+			}
+			root.increase()
+			root.valueModified()
+			root.up.pressed = true
+		}
+
+		anchors.fill: root.up.indicator
+		onPressed: activate()
+		onReleased: root.up.pressed = false
+		onCanceled: root.up.pressed = false
+
+		Keys.enabled: Global.keyNavigationEnabled
+		Keys.onSpacePressed: activate()
+		Keys.onReleased: root.up.pressed = false
+		KeyNavigation.left: orientation === Qt.Horizontal ? root.contentItem : null
+		KeyNavigation.down: orientation === Qt.Vertical ? root.contentItem : null
+		KeyNavigationHighlight.fill: root.up.indicator
+		KeyNavigationHighlight.active: activeFocus
+	}
+	PressArea {
+		id: downIndicatorPressArea
+
+		function activate() {
+			if (!root.down.indicator.enabled) {
+				root.decreaseFailed()
+				return
+			}
+			root.decrease()
+			root.valueModified()
+			root.down.pressed = true
+		}
+
+		anchors.fill: root.down.indicator
+		onPressed: activate()
+		onReleased: root.down.pressed = false
+		onCanceled: root.down.pressed = false
+
+		Keys.enabled: Global.keyNavigationEnabled
+		Keys.onSpacePressed: activate()
+		Keys.onReleased: root.down.pressed = false
+		KeyNavigation.right: orientation === Qt.Horizontal ? root.contentItem : null
+		KeyNavigation.up: orientation === Qt.Vertical ? root.contentItem : null
+		KeyNavigationHighlight.fill: root.down.indicator
+		KeyNavigationHighlight.active: activeFocus
 	}
 
 	textFromValue: function(value, locale) {
@@ -383,7 +358,21 @@ CT.SpinBox {
 		onRunningChanged: if (!running) interval = 500
 		onTriggered: {
 			interval = 100
-			up.pressed ? root.increase() : root.decrease()
+			if (up.pressed) {
+				if (root.up.indicator.enabled) {
+					root.increase()
+					root.valueModified()
+				} else {
+					root.increaseFailed()
+				}
+			} else {
+				if (root.down.indicator.enabled) {
+					root.decrease()
+					root.valueModified()
+				} else {
+					root.decreaseFailed()
+				}
+			}
 		}
 	}
 }

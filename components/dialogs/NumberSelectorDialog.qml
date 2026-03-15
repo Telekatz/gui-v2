@@ -4,6 +4,7 @@
 */
 
 import QtQuick
+import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
 ModalDialog {
@@ -18,12 +19,9 @@ ModalDialog {
 	property real stepSize
 	property var presets: []
 
-	signal maxValueReached()
-	signal minValueReached()
-
-	function _multiplier() {
-		return Math.pow(10, decimals)
-	}
+	// Error text shown when user tries to set a value < from or > to.
+	property string fromErrorText
+	property string toErrorText
 
 	onAboutToShow: {
 		if (presets.length) {
@@ -39,41 +37,71 @@ ModalDialog {
 	}
 
 	contentItem: ModalDialog.FocusableContentItem {
-		Column {
+		id: dialogContent
+
+		function valueModified() {
+			root.value = decimalConverter.intToDecimal(spinBox.value)
+		}
+
+		// Show error label above the spinbox, as items below it may be obscured by the VKB.
+		Label {
+			id: errorLabel
+
 			anchors {
+				bottom: spinBoxColumn.top
+				bottomMargin: Theme.geometry_modalWarningDialog_description_spacing
+				horizontalCenter: parent.horizontalCenter
+			}
+			width: Math.min(implicitWidth, spinBoxColumn.width)
+			leftPadding: alarmIcon.width +  Theme.geometry_modalWarningDialog_description_spacing
+			opacity: errorLabel.text.length > 0 ? 1 : 0
+			wrapMode: Text.Wrap
+
+			Behavior on opacity {
+				NumberAnimation { easing.type: Easing.InOutQuad }
+			}
+
+			CP.IconImage {
+				id: alarmIcon
+				anchors.verticalCenter: parent.verticalCenter
+				source: "qrc:/images/icon_alarm_32.svg"
+				color: Theme.color_red
+			}
+		}
+
+		Column {
+			id: spinBoxColumn
+
+			anchors {
+				left: parent.left
+				leftMargin: Theme.geometry_modalDialog_content_horizontalMargin
+				right: parent.right
+				rightMargin: Theme.geometry_modalDialog_content_horizontalMargin
 				verticalCenter: parent.verticalCenter
 				verticalCenterOffset: -Theme.geometry_modalDialog_content_margins
 			}
 			width: parent.width
-			spacing: Theme.geometry_modalDialog_content_spacing
+			spacing: Theme.geometry_modalDialog_content_margins
 
 			SpinBox {
 				id: spinBox
 
-				property bool _initialized: false
-
-				anchors.horizontalCenter: parent.horizontalCenter
-				width: parent.width - 2*Theme.geometry_modalDialog_content_horizontalMargin
+				width: parent.width
 				height: Theme.geometry_timeSelector_spinBox_height
 				editable: true
 				indicatorImplicitWidth: root.decimals > 0
 						? Theme.geometry_spinBox_indicator_minimumWidth
 						: Theme.geometry_spinBox_indicator_maximumWidth
-				textFromValue: function(value, locale) {
-					return Units.formatNumber(value / root._multiplier(), root.decimals)
-				}
-				valueFromText: function(text, locale) {
-					let value = Units.formattedNumberToReal(text) * root._multiplier()
-					if (isNaN(value)) {
-						// don't change the current value
-						value = spinBox.value
-					}
-					return value
-				}
-				from: Math.max(Global.int32Min, root.from * root._multiplier())
-				to: Math.min(Global.int32Max, root.to * root._multiplier())
-				stepSize: root.stepSize * root._multiplier()
 				suffix: root.suffix
+				from: decimalConverter.intFrom
+				to: decimalConverter.intTo
+				stepSize: decimalConverter.intStepSize
+				value: decimalConverter.decimalToInt(root.value)
+				textFromValue: (value, locale) => decimalConverter.textFromValue(value)
+				valueFromText: (text, locale) => {
+					const v = decimalConverter.valueFromText(text)
+					return isNaN(v) ? decimalConverter.decimalToInt(root.value) : v // if invalid, use the previous value
+				}
 
 				// Use BeforeItem priority to override the default key Spinbox event handling, else
 				// up/down keys will modify the number even when SpinBox is not in "edit" mode.
@@ -82,31 +110,51 @@ ModalDialog {
 				KeyNavigation.up: spinBox
 				KeyNavigation.down: presetsRow.enabled ? presetsRow : root.footer
 
-				onValueChanged: {
-					if (_initialized) {
-						root.value = Number(spinBox.value / root._multiplier())
-						presetsRow.currentIndex = -1
+				onValueModified: {
+					dialogContent.valueModified()
+					presetsRow.currentIndex = -1
+				}
+				onDecreaseFailed: {
+					if (root.fromErrorText) {
+						errorLabel.text = root.fromErrorText
+						errorLabel.opacity = 1
+						errorTimeout.restart()
+					}
+				}
+				onIncreaseFailed: {
+					if (root.toErrorText) {
+						errorLabel.text = root.toErrorText
+						errorLabel.opacity = 1
+						errorTimeout.restart()
 					}
 				}
 
-				onMinValueReached: root.minValueReached()
-				onMaxValueReached: root.maxValueReached()
-				Component.onCompleted: {
-					spinBox.value = Math.round(root.value * root._multiplier())
-					_initialized = true
+				Timer {
+					id: errorTimeout
+					interval: 3000
+					onTriggered: errorLabel.opacity = 0
+				}
+
+				SpinBoxDecimalConverter {
+					id: decimalConverter
+
+					decimals: root.decimals
+					from: root.from
+					to: root.to
+					stepSize: root.stepSize
 				}
 			}
 
 			SegmentedButtonRow {
 				id: presetsRow
 
-				width: spinBox.width
-				anchors.horizontalCenter: parent.horizontalCenter
+				width: parent.width
 				model: root.presets
 				visible: model.length > 0
 				enabled: visible
 				onButtonClicked: function (buttonIndex) {
-					spinBox.value = model[buttonIndex].value * root._multiplier()
+					spinBox.value = decimalConverter.decimalToInt(model[buttonIndex].value)
+					dialogContent.valueModified()
 				}
 
 				KeyNavigation.down: root.footer

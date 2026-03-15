@@ -40,9 +40,14 @@ class ThemeSingleton : public Theme
 %s
 
 public:
-	ThemeSingleton(QObject *parent = nullptr)
+	ThemeSingleton(QObject *parent)
 		: Theme(parent)
 	{
+	}
+
+	static ThemeSingleton *create(QQmlEngine *engine = nullptr, QJSEngine *js = nullptr) {
+		static ThemeSingleton *instance = new ThemeSingleton(nullptr);
+		return instance;
 	}
 
 	// property accessors
@@ -122,6 +127,8 @@ class ThemeProperty:
             notify_signal = 'screenSizeChanged_parameterless'
         elif self.json_info.enum_type == 'ColorScheme':
             notify_signal = 'colorSchemeChanged_parameterless'
+        elif self.json_info.enum_type == 'SystemColorScheme':
+            notify_signal = 'systemColorSchemeChanged_parameterless'
         elif not self.json_info.enum_type:
             notify_signal = None
         else:
@@ -270,4 +277,3 @@ if __name__ == '__main__':
     themes_dir, output_header_name = sys.argv[1:3]
     print('Generating theme file {} from theme directory {}'.format(output_header_name, themes_dir))
     generate_theme_code(themes_dir, output_header_name)
-

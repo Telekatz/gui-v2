@@ -9,54 +9,39 @@ import Victron.VenusOS
 OverviewWidget {
 	id: root
 
-	property DeviceModel inputs: DeviceModel {}
-	readonly property int inputType: !!inputs.firstObject
-			? Global.dcInputs.inputType(inputs.firstObject.serviceUid, inputs.firstObject.monitorMode)
-			: -1
-	readonly property string detailUrl: inputType === VenusOS.DcInputs_InputType_Alternator ? "/pages/settings/devicelist/dc-in/PageAlternator.qml"
-			: inputType === VenusOS.DcInputs_InputType_DcGenerator ? "/pages/settings/devicelist/PageGenset.qml"
+	required property string serviceType
+	property int inputTypeFilter: -1
+
+	readonly property int inputType: inputDeviceModel.commonMeterType >= 0 ? inputDeviceModel.commonMeterType
+			: serviceType === "dcsource" ? VenusOS.DcMeter_Type_GenericSource
+			: VenusOS.DcMeter_Type_GenericMeter
+	readonly property string detailUrl: serviceType === "alternator" ? "/pages/settings/devicelist/dc-in/PageAlternator.qml"
+			: serviceType === "dcgenset" ? "/pages/settings/devicelist/PageGenset.qml"
 			: "/pages/settings/devicelist/dc-in/PageDcMeter.qml"
 
-	function _refreshTotalPower() {
-		let totalPower = NaN
-		let totalCurrent = NaN
-		for (let i = 0; i < inputs.count; ++i) {
-			const input = inputs.deviceAt(i)
-			totalPower = Units.sumRealNumbers(totalPower, input.power)
-			totalCurrent = Units.sumRealNumbers(totalCurrent, input.current)
-		}
-		quantityLabel.dataObject.power = totalPower
-		quantityLabel.dataObject.current = totalCurrent
-	}
-
-	title: VenusOS.dcInput_typeToText(inputType)
+	title: VenusOS.dcMeter_typeToText(inputType)
+	quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Dc
 	quantityLabel.dataObject: QtObject {
-		property real power: NaN
-		property real current: NaN
+		readonly property real power: inputDeviceModel.totalPower
+		readonly property real current: inputDeviceModel.totalCurrent
 	}
-	icon.source: Global.dcInputs.inputTypeIcon(inputType)
+	icon.source: VenusOS.dcMeter_iconForType(inputType)
 	enabled: true
 
 	onClicked: {
-		if (root.inputs.count === 1) {
+		if (inputDeviceModel.count === 1) {
 			Global.pageManager.pushPage(root.detailUrl, {
-				"bindPrefix": root.inputs.firstObject.serviceUid
+				"bindPrefix": inputDeviceModel.firstObject.serviceUid
 			})
 		} else {
 			Global.pageManager.pushPage(listPageComponent)
 		}
 	}
 
-	Instantiator {
-		model: root.inputs
-		// Each object in the model should be a DcDevice object with a 'power' value.
-		delegate: Connections {
-			target: model.device
-			function onPowerChanged() {
-				Qt.callLater(root._refreshTotalPower)
-			}
-			Component.onCompleted: Qt.callLater(root._refreshTotalPower)
-		}
+	DcMeterDeviceModel {
+		id: inputDeviceModel
+		serviceTypes: [ root.serviceType ]
+		meterTypeFilter: root.inputTypeFilter
 	}
 
 	Component {
@@ -67,27 +52,37 @@ OverviewWidget {
 
 			GradientListView {
 				header: QuantityGroupListHeader {
-					quantityTitleModel: [
+					width: parent.width
+					metricsFontSize: Theme.font_size_body2 // align columns with those in the delegate
+					rightPadding: Theme.geometry_listItem_content_horizontalMargin + Theme.geometry_icon_size_medium
+					model: [
 						{ text: CommonWords.voltage, unit: VenusOS.Units_Volt_DC },
 						{ text: CommonWords.current_amps, unit: VenusOS.Units_Amp },
 						{ text: CommonWords.power_watts, unit: VenusOS.Units_Watt },
 					]
 				}
 
-				model: root.inputs
+				model: inputDeviceModel
 				delegate: ListQuantityGroupNavigation {
-					text: model.device.name
+					required property BaseDevice device
+
+					text: device.name
 					tableMode: true
 					quantityModel: QuantityObjectModel {
-						QuantityObject { object: model.device; key: "voltage"; unit: VenusOS.Units_Volt_DC }
-						QuantityObject { object: model.device; key: "current"; unit: VenusOS.Units_Amp }
-						QuantityObject { object: model.device; key: "power"; unit: VenusOS.Units_Watt }
+						QuantityObject { object: dcInput; key: "voltage"; unit: VenusOS.Units_Volt_DC }
+						QuantityObject { object: dcInput; key: "current"; unit: VenusOS.Units_Amp }
+						QuantityObject { object: dcInput; key: "power"; unit: VenusOS.Units_Watt }
 					}
 
 					onClicked: {
 						Global.pageManager.pushPage(root.detailUrl, {
-							"bindPrefix": model.device.serviceUid
+							"bindPrefix": device.serviceUid
 						})
+					}
+
+					DcDevice {
+						id: dcInput
+						serviceUid: device.serviceUid
 					}
 				}
 			}

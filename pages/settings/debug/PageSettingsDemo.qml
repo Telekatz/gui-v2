@@ -165,7 +165,7 @@ Page {
 				}
 
 				Timer {
-					running: root.isCurrentPage
+					running: root.isCurrentPage && Global.timersEnabled
 					interval: 3000
 					repeat: true
 					onTriggered: customDataObject.voltage = Math.random()
@@ -246,6 +246,22 @@ Page {
 				stepSize: Math.pow(10, -decimals)
 				from: 1
 				to: 1.5
+			}
+
+			ListSpinBoxRange {
+				text: "Spin box range"
+
+				dataItemFrom.value: 0
+				rangeModelFrom.minimumValue: -5
+				rangeModelFrom.maximumValue: 20
+				rangeModelFrom.stepSize: 0.5
+
+				dataItemTo.value: 75
+				rangeModelTo.minimumValue: 50
+				rangeModelTo.maximumValue: 100
+				rangeModelTo.stepSize: 10
+
+				unit: VenusOS.Units_Volume_Litre
 			}
 
 			ListDateSelector {
@@ -344,8 +360,7 @@ Page {
 						source: "image://QZXing/encode/" + "https://www.victronenergy.com/" +
 								"?correctionLevel=M" +
 								"&format=qrcode"
-						sourceSize.width: Theme.geometry_listItem_height
-						sourceSize.height: Theme.geometry_listItem_height
+						sourceSize: Qt.size(Theme.geometry_listItem_height, Theme.geometry_listItem_height)
 					}
 				]
 			}

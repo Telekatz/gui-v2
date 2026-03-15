@@ -11,8 +11,11 @@ ListItem {
 
 	readonly property alias dataItem: dataItem
 	property alias value: quantityLabel.value
+	property alias valueColor: quantityLabel.valueColor
 	property alias unit: quantityLabel.unit
+	property alias unitColor: quantityLabel.unitColor
 	property alias precision: quantityLabel.precision
+	property alias precisionAdjustmentAllowed: quantityLabel.precisionAdjustmentAllowed
 
 	content.children: [
 		QuantityLabel {

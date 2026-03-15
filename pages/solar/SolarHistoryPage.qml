@@ -5,14 +5,19 @@
 
 import QtQuick
 import Victron.VenusOS
-import QtQuick.Controls as C
 
 Page {
 	id: root
 
-	property SolarHistory solarHistory
+	required property string serviceUid
+	readonly property alias solarHistory: solarHistory
 
 	title: CommonWords.history
+
+	SolarHistory {
+		id: solarHistory
+		serviceUid: root.serviceUid
+	}
 
 	TabBar {
 		id: tabBar
@@ -77,7 +82,6 @@ Page {
 			rightMargin: Theme.geometry_page_content_horizontalMargin
 			verticalCenter: tabBar.verticalCenter
 		}
-		width: Theme.geometry_comboBox_width
 		model: tableModeOptions
 		displayText: model[currentIndex].text
 	}

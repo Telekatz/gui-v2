@@ -3,14 +3,31 @@
 # This script installs or updates the dependencies needed to build the GUIv2 for a GX device
 
 
-# Check if the script is run on Ubuntu 24.x or later
-if [[ "$(lsb_release -is)" == "Ubuntu" && "$(lsb_release -rs)" =~ ^24 ]]; then
-    echo "Running on Ubuntu 24.x or later"
+# For which device type are you building?
+# arm: All GX devices, except Raspberry Pi 5
+# aarch64: Raspberry Pi 5
+DEVICE_TYPE="arm"
+
+
+# Check if the script is run on Ubuntu 22.x or later
+UBUNTU_VERSION=$(lsb_release -rs | cut -d. -f1)
+if [[ "$(lsb_release -is)" == "Ubuntu" && "$UBUNTU_VERSION" -ge 22 ]]; then
+    echo "Running on Ubuntu $(lsb_release -rs | cut -f1)"
 else
-    echo "This script requires Ubuntu 24.x or later"
+    echo -e "\033[1;33mThis script requires Ubuntu 22.x or later\033[0m"
     exit 1
 fi
 
+# Check if script is run as root
+if [ "$EUID" -eq 0 ]; then
+    echo -e "\033[1;33mPlease do NOT run this script as root or with sudo.\nThis will cause file permission problems and the build will fail.\033[0m"
+    exit 1
+fi
+
+echo
+echo "NOTE: If you are using a Raspberry Pi 5, please change the DEVICE_TYPE variable to 'aarch64' in this script."
+echo
+sleep 3
 
 # Check if curl is installed, if not, install it
 if ! command -v curl > /dev/null 2>&1
@@ -51,7 +68,7 @@ URL="https://updates.victronenergy.com/feeds/venus/candidate/sdk/"
 html_content=$(curl -s ${URL})
 
 # Extract the filename ending with .sh from the HTML content
-filename=$(echo "${html_content}" | grep -oP '(?<=href=")[^"]+\.sh' | head -n 1)
+filename=$(echo "${html_content}" | grep "${DEVICE_TYPE}" | grep -oP '(?<=href=")[^"]+\.sh' | head -n 1)
 
 # Construct the download URL
 download_url="https://updates.victronenergy.com/feeds/venus/candidate/sdk/${filename}"

@@ -128,7 +128,8 @@ ControlCard {
 			text: CommonWords.ess
 			flat: true
 			preferredVisible: essModeItem.valid
-			secondaryText: Global.ess.essStateToButtonText(essModeItem.value)
+			writeAccessLevel: VenusOS.User_AccessType_User
+			secondaryText: Global.systemSettings.ess.essStateToButtonText(essModeItem.value)
 			// change the font size for the child button
 			button.font.pixelSize: Theme.font_size_body1
 			onClicked: {
@@ -144,6 +145,7 @@ ControlCard {
 				VenusOS.Ess_State_OptimizedWithBatteryLife,
 				VenusOS.Ess_State_OptimizedWithoutBatteryLife].includes(essModeItem.value)
 			secondaryText: Units.getCombinedDisplayText(VenusOS.Units_Percentage, essMinSocItem.value)
+			writeAccessLevel: VenusOS.User_AccessType_User
 			onClicked: Global.dialogLayer.open(essMinSocDialogComponent)
 		}
 	}

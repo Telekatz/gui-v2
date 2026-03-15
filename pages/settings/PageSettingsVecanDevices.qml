@@ -16,43 +16,58 @@ Page {
 	title: qsTrId("settings_vecan_devices")
 
 	GradientListView {
-		model: VeQItemTableModel {
-			uids: [ root.serviceUid + "/Devices" ]
-			flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
+		// Filter out any disconnected/offline devices, i.e. those with an invalid DeviceInstance.
+		model: VeQItemSortTableModel {
+			dynamicSortFilter: true
+			filterFlags: VeQItemSortTableModel.FilterInvalid
+			model: VeQItemChildModel {
+				model: VeQItemTableModel {
+					uids: [ root.serviceUid + "/Devices" ]
+					flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
+				}
+				childId: "DeviceInstance"
+			}
 		}
 
-		delegate: ListSpinBox {
+		delegate: ListNavigation {
 			id: listDelegate
 
-			text: "%1 [%2]".arg(customName.value || modelName.value).arg(uniqueNumber.value)
-			//% "VE.Can Instance# %1"
-			secondaryText: qsTrId("settings_vecan_device_number").arg(dataItem.value)
-			dataItem.uid: model.uid + "/DeviceInstance"
+			required property VeQItem item
+			readonly property string uid: item.itemParent().uid
 
-			CP.ColorImage {
-				parent: listDelegate.content
-				anchors.verticalCenter: parent.verticalCenter
-				source: "qrc:/images/icon_arrow_32.svg"
-				rotation: 180
-				color: listDelegate.down ? Theme.color_listItem_down_forwardIcon : Theme.color_listItem_forwardIcon
-			}
+			// Use JS string concatenation to avoid Qt string arg() from formatting as scientific notation.
+			text: "%1 [%2]".arg(customName.value || modelName.value).arg(""+uniqueNumber.value)
+
+			secondaryText: connected.valid && connected.value === 0 ? CommonWords.offline :
+				//% "VE.Can Instance# %1"
+				qsTrId("settings_vecan_device_number").arg(deviceInstance.value)
 
 			onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsVecanDevice.qml",
-												   { bindPrefix: model.uid, title: text })
+												   { bindPrefix: listDelegate.uid, title: text })
+
+			VeQuickItem {
+				id: connected
+				uid: listDelegate.uid + "/Connected"
+			}
+
+			VeQuickItem {
+				id: deviceInstance
+				uid: listDelegate.uid + "/DeviceInstance"
+			}
 
 			VeQuickItem {
 				id: modelName
-				uid: model.uid + "/ModelName"
+				uid: listDelegate.uid + "/ModelName"
 			}
 
 			VeQuickItem {
 				id: customName
-				uid: model.uid + "/CustomName"
+				uid: listDelegate.uid + "/CustomName"
 			}
 
 			VeQuickItem {
 				id: uniqueNumber
-				uid: model.uid + "/N2kUniqueNumber"
+				uid: listDelegate.uid + "/N2kUniqueNumber"
 			}
 		}
 	}

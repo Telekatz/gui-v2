@@ -20,34 +20,53 @@ Window {
 	width: Qt.platform.os != "wasm" ? Theme.geometry_screen_width/scaleFactor : Screen.width/scaleFactor
 	height: Qt.platform.os != "wasm" ? Theme.geometry_screen_height/scaleFactor : Screen.height/scaleFactor
 
+	// Automatically decide if rotation is required (portrait -> landscape)
+	readonly property bool requiresRotation: Global.isGxDevice && root.height > root.width
 	property bool isDesktop: false
 	property real scaleFactor: 1.0
 	onIsDesktopChanged: Global.isDesktop = root.isDesktop
+
+	// Uncomment for key navigation debugging
+	// onActiveFocusItemChanged: console.info("** Active focused:", activeFocusItem, activeFocusItem?.title ?? activeFocusItem?.text ?? "")
 
 	function skipSplashScreen() {
 		Global.splashScreenVisible = false
 	}
 
 	function rebuildUi() {
-		console.warn("Rebuilding UI")
+		console.info("Main: UI rebuild required")
 		if (Global.mainView) {
 			Global.mainView.clearUi()
 		}
-		Global.reset()
-		if (dataManagerLoader.active && dataManagerLoader.connectionReady) {
+		const demoModeChange = dataManagerLoader.active && dataManagerLoader.connectionReady
+		if (demoModeChange) {
 			// we haven't lost backend connection.
 			// we must be rebuilding UI due to demo mode change.
 			// manually cycle the data manager loader.
+			console.info("Main: resetting data manager due to demo mode change")
 			dataManagerLoader.active = false
+		}
+		Global.reset()
+		if (demoModeChange) {
 			dataManagerLoader.active = true
 		}
 		gc()
-		console.warn("Rebuilding complete")
+		console.info("Main: UI rebuild started successfully")
 	}
 
 	function ensureApplicationActive() {
 		Global.applicationActive = true
 		appIdleTimer.restart()
+	}
+
+	function keyNavigationTimeout() {
+		// Disable key nav when app is inactive; user can re-enable it later by pressing a
+		// navigation key. Do not disable key nav when a dialog is shown, because the user
+		// cannot re-enable it within a modal dialog, as ModalDialog focus is only enabled when
+		// keyNavigationEnabled=true.
+		if (!Global.dialogLayer?.currentDialog) {
+			Global.keyNavigationEnabled = false
+		}
 	}
 
 	Component.onCompleted: Global.main = root
@@ -72,36 +91,51 @@ Window {
 	}
 
 	contentItem {
-		// on wasm just show the GUI at the top of the screen
-		transformOrigin: Qt.platform.os !== "wasm" ? Item.Center : Item.Top
+		// show the GUI always centered in the window
+		transformOrigin: Item.Center
+
+		// Apply rotation
+		transform: Rotation {
+			origin.x: root.width / 2
+			origin.y: root.height / 2
+			angle: root.requiresRotation ? 90 : 0
+		}
+
+		// Adjust scale depending on the rotation
+		readonly property real rotatedScale: root.requiresRotation
+			? Math.min(root.width / Theme.geometry_screen_height, root.height / Theme.geometry_screen_width)
+			: Math.min(root.width / Theme.geometry_screen_width, root.height / Theme.geometry_screen_height)
+		scale: rotatedScale
+
+		// Center only if rotated
+		x: root.requiresRotation ? (root.width - Theme.geometry_screen_height * contentItem.scale) / 2 : 0
+		y: root.requiresRotation ? (root.height - Theme.geometry_screen_width * contentItem.scale) / 2 : 0
 
 		// In WebAssembly builds, if we are displaying on a low-dpi mobile
 		// device, it may not have enough pixels to display the UI natively.
 		// To fix, we need to downscale everything by the appropriate factor,
 		// and take into account browser chrome stealing real-estate also.
 		onScaleChanged: Global.scalingRatio = contentItem.scale
-		scale: Math.min(root.width/Theme.geometry_screen_width, root.height/Theme.geometry_screen_height)
 
-		// #2161 Key nav is disabled for now
-		// Keys.onPressed: function(event) {
-		//     // When a navigation key is pressed and it is not handled by an item higher up in the
-		//     // UI item hierarchy, enable key navigation to allow guiLoader to get focus and receive
-		//     // key events.
-		//     if (!Global.keyNavigationEnabled) {
-		//         switch (event.key) {
-		//         case Qt.Key_Left:
-		//         case Qt.Key_Right:
-		//         case Qt.Key_Up:
-		//         case Qt.Key_Down:
-		//         case Qt.Key_Tab:
-		//         case Qt.Key_Backtab:
-		//             Global.keyNavigationEnabled = true
-		//             event.accepted = true
-		//             return
-		//         }
-		//     }
-		//     event.accepted = false
-		// }
+		Keys.onPressed: function(event) {
+			// If a key press is not handled by an item higher up in the hierarchy:
+			// Enable key navigation when an arrow or tab/backtab key is pressed.
+			if (!Global.keyNavigationEnabled) {
+				switch (event.key) {
+				case Qt.Key_Left:
+				case Qt.Key_Right:
+				case Qt.Key_Up:
+				case Qt.Key_Down:
+				case Qt.Key_Tab:
+				case Qt.Key_Backtab:
+				case Qt.Key_Space:
+					Global.keyNavigationEnabled = true
+					event.accepted = true
+					return
+				}
+			}
+			event.accepted = false
+		}
 	}
 
 	Loader {
@@ -116,17 +150,11 @@ Window {
 		clip: Qt.platform.os == "wasm" || Global.isDesktop
 		width: Theme.geometry_screen_width
 		height: Theme.geometry_screen_height
-		anchors.horizontalCenter: parent.horizontalCenter
-		states: State {
-			when: Qt.platform.os !== "wasm"
-			AnchorChanges {
-				target: guiLoader
-				anchors.verticalCenter: parent.verticalCenter
-			}
-		}
+		anchors.centerIn: parent
 
 		asynchronous: true
 		active: Global.dataManagerLoaded
+		onActiveChanged: if (active) console.info("Main: data manager finished loading; now loading application content")
 		sourceComponent: ApplicationContent {
 			anchors.centerIn: parent
 			focus: true
@@ -139,14 +167,7 @@ Window {
 		clip: Qt.platform.os == "wasm"
 		width: Theme.geometry_screen_width
 		height: Theme.geometry_screen_height
-		anchors.horizontalCenter: parent.horizontalCenter
-		states: State {
-			when: Qt.platform.os !== "wasm"
-			AnchorChanges {
-				target: splashLoader
-				anchors.verticalCenter: parent.verticalCenter
-			}
-		}
+		anchors.centerIn: parent
 
 		active: Global.splashScreenVisible
 		sourceComponent: SplashView {
@@ -156,18 +177,11 @@ Window {
 
 	Timer {
 		id: appIdleTimer
-		running: !Global.splashScreenVisible
+		running: !Global.splashScreenVisible && Global.timersEnabled
 		interval: 60000
 		onTriggered: {
 			Global.applicationActive = false
-
-			// Disable key nav when app is inactive; user can re-enable it later by pressing a
-			// navigation key. Do not disable key nav when a dialog is shown, because the user
-			// cannot re-enable it within a modal dialog, as ModalDialog focus is only enabled when
-			// keyNavigationEnabled=true.
-			if (!Global.dialogLayer?.currentDialog) {
-				Global.keyNavigationEnabled = false
-			}
+			root.keyNavigationTimeout()
 		}
 	}
 

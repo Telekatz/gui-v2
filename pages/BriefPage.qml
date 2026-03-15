@@ -14,10 +14,9 @@ SwipeViewPage {
 	property real _gaugeLabelMargin: Theme.geometry_briefPage_edgeGauge_label_initialize_margin
 	property real _gaugeArcOpacity: 0
 	property real _gaugeLabelOpacity: 0
-	readonly property string _dcInputIconSource: Global.dcInputs.inputTypeIcon(Global.dcInputs.model.firstObject?.inputType)
 
 	readonly property int _leftGaugeCount: (acInputGauge.active ? 1 : 0) + (dcInputGauge.active ? 1 : 0) + (solarYieldGauge.active ? 1 : 0)
-	readonly property int _rightGaugeCount: dcLoadGauge.active ? 2 : 1  // AC load gauge is always active
+	readonly property int _rightGaugeCount: (acLoadGauge.active ? 1 : 0) + (dcLoadGauge.active ? 1 : 0)
 	readonly property real _unexpandedHeight: Theme.geometry_screen_height - Theme.geometry_statusBar_height - Theme.geometry_navigationBar_height
 
 	property bool _readyToInit: state === "" && !Global.splashScreenVisible
@@ -74,6 +73,7 @@ SwipeViewPage {
 		id: multiGauge
 
 		CircularMultiGauge {
+			id: circularMultiGauge
 			model: gaugeModel
 			animationEnabled: root.animationEnabled
 			labelOpacity: root._gaugeLabelOpacity
@@ -82,10 +82,8 @@ SwipeViewPage {
 
 			BriefCenterDisplay {
 				anchors.centerIn: parent
-				width: parent.width
-				visible: gaugeModel.count <= 3
+				width: parent.width - (gaugeModel.count * circularMultiGauge._stepSize) + Theme.geometry_circularMultiGauge_spacing
 				showFullDetails: gaugeModel.count === 1
-				smallTextMode: gaugeModel.count === 3
 			}
 		}
 	}
@@ -148,8 +146,7 @@ SwipeViewPage {
 				opacity: root._gaugeArcOpacity
 				animationEnabled: root.animationEnabled && !pauseLeftGaugeAnimations.running
 				valueType: VenusOS.Gauges_ValueType_NeutralPercentage
-				phaseModel: Global.acInputs.highlightedInput?.phases
-				phaseModelProperty: "current"
+				phaseModel: Global.acInputs.highlightedInput?.phases ?? null
 				minimumValue: !!Global.acInputs.highlightedInput ? Global.acInputs.highlightedInput.inputInfo.minimumCurrent : NaN
 				maximumValue: !!Global.acInputs.highlightedInput ? Global.acInputs.highlightedInput.inputInfo.maximumCurrent : NaN
 				inputMode: true
@@ -173,8 +170,8 @@ SwipeViewPage {
 					icon.source: Global.acInputs.sourceIcon(Global.acInputs.highlightedInput?.source ?? Global.acInputs.findValidSource())
 					leftPadding: root._gaugeLabelMargin - root._gaugeArcMargin
 					opacity: root._gaugeLabelOpacity
+					quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_AcInputOnly
 					quantityLabel.dataObject: Global.acInputs.highlightedInput
-					quantityLabel.acInputMode: true
 				}
 			}
 			onStatusChanged: if (status === Loader.Error) console.warn("Unable to load AC input edge")
@@ -209,9 +206,12 @@ SwipeViewPage {
 							// top, or is the first (top) gauge, so label aligns to the bottom.
 							? Qt.AlignLeft | (acInputGauge.active ? Qt.AlignTop : Qt.AlignBottom)
 							: Qt.AlignLeft| Qt.AlignVCenter
-					icon.source: root._dcInputIconSource
+					icon.source: Global.dcInputs.model.count === 1
+							? VenusOS.dcMeter_iconForType(Global.dcInputs.model.firstMeterType)
+							: VenusOS.dcMeter_iconForMultipleTypes()
 					leftPadding: root._gaugeLabelMargin - root._gaugeArcMargin
 					opacity: root._gaugeLabelOpacity
+					quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Dc
 					quantityLabel.dataObject: Global.dcInputs
 				}
 
@@ -229,7 +229,7 @@ SwipeViewPage {
 
 			width: Theme.geometry_briefPage_edgeGauge_width
 			height: active ? Gauges.gaugeHeight(root._leftGaugeCount) : 0
-			active: (Global.solarDevices.model.count > 0 || Global.pvInverters.model.count > 0) && root.state !== "panelOpened"
+			active: Global.solarInputs.inputCount > 0 && root.state !== "panelOpened"
 			sourceComponent: SolarYieldGauge {
 				readonly property var gaugeParams: Gauges.leftGaugeParameters(0, _leftGaugeCount)
 
@@ -251,6 +251,7 @@ SwipeViewPage {
 					icon.source: "qrc:/images/solaryield.svg"
 					leftPadding: root._gaugeLabelMargin - root._gaugeArcMargin
 					opacity: root._gaugeLabelOpacity
+					quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Any
 					quantityLabel.dataObject: Global.system.solar
 				}
 			}
@@ -271,8 +272,8 @@ SwipeViewPage {
 			id: acLoadGauge
 
 			width: Theme.geometry_briefPage_edgeGauge_width
-			height: Gauges.gaugeHeight(root._rightGaugeCount)
-			active: root.state !== "panelOpened"
+			height: active ? Gauges.gaugeHeight(root._rightGaugeCount) : 0
+			active: Global.system.hasAcLoads && root.state !== "panelOpened"
 
 			sourceComponent: SideMultiGauge {
 				readonly property var gaugeParams: Gauges.rightGaugeParameters(0, _rightGaugeCount, phaseModel.count > 1)
@@ -291,7 +292,6 @@ SwipeViewPage {
 				animationEnabled: root.animationEnabled && !pauseRightGaugeAnimations.running
 				valueType: VenusOS.Gauges_ValueType_RisingPercentage
 				phaseModel: Global.system.load.ac.phases
-				phaseModelProperty: "current"
 				maximumValue: Global.system.load.maximumAcCurrent
 
 				ArcGaugeQuantityRow {
@@ -299,6 +299,7 @@ SwipeViewPage {
 					icon.source: dcLoadGauge.active ? "qrc:/images/acloads.svg" : "qrc:/images/consumption.svg"
 					rightPadding: root._gaugeLabelMargin - root._gaugeArcMargin
 					opacity: root._gaugeLabelOpacity
+					quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Ac
 					quantityLabel.dataObject: Global.system.load.ac
 				}
 			}
@@ -310,11 +311,12 @@ SwipeViewPage {
 
 			width: Theme.geometry_briefPage_edgeGauge_width
 			height: active ? Gauges.gaugeHeight(root._rightGaugeCount) : 0
-			active: !isNaN(Global.system.dc.power) && root.state !== "panelOpened"
-			sourceComponent: SideGauge {
-				readonly property var gaugeParams: Gauges.rightGaugeParameters(1, _rightGaugeCount)
+			active: Global.system.dc.hasPower && root.state !== "panelOpened"
 
-				// DC load gauge progresses in counter-clockwise direction (i.e. upwards).
+			sourceComponent: SideGauge {
+				readonly property var gaugeParams: Gauges.rightGaugeParameters(acLoadGauge.active ? 1 : 0, _rightGaugeCount)
+
+				// DC load gauge progresses in counter-clockwise direction (i.e. upwards)
 				direction: PathArc.Counterclockwise
 				startAngle: gaugeParams.end
 				endAngle: gaugeParams.start
@@ -332,6 +334,7 @@ SwipeViewPage {
 					icon.source: "qrc:/images/dcloads.svg"
 					rightPadding: root._gaugeLabelMargin - root._gaugeArcMargin
 					opacity: root._gaugeLabelOpacity
+					quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Dc
 					quantityLabel.dataObject: Global.system.dc
 				}
 
@@ -362,7 +365,6 @@ SwipeViewPage {
 			width: parent.width
 			height: Math.max(root._unexpandedHeight, implicitHeight)
 			animationEnabled: root.animationEnabled
-			dcInputIconSource: root._dcInputIconSource
 		}
 
 		// the brief monitor panel has animations which mess with the asynchronous heuristic
@@ -376,7 +378,7 @@ SwipeViewPage {
 	}
 
 	Connections {
-		target: !!Global.pageManager ? Global.pageManager.statusBar : null
+		target: Global.mainView?.statusBar ?? null
 		enabled: root.isCurrentPage
 
 		function onRightButtonClicked() {
@@ -439,16 +441,16 @@ SwipeViewPage {
 					NumberAnimation {
 						target: root
 						properties: "_gaugeArcOpacity,_gaugeArcMargin"
-						duration: Theme.animation_briefPage_gaugeArc_initialize_duration
+						duration: root.animationEnabled ? Theme.animation_briefPage_gaugeArc_initialize_duration : 1
 					}
 					SequentialAnimation {
 						PauseAnimation {
-							duration: Theme.animation_briefPage_gaugeLabel_initialize_delayedStart_duration
+							duration: root.animationEnabled ? Theme.animation_briefPage_gaugeLabel_initialize_delayedStart_duration : 1
 						}
 						NumberAnimation {
 							target: root
 							properties: "_gaugeLabelOpacity,_gaugeLabelMargin"
-							duration: Theme.animation_briefPage_gaugeLabel_initialize_duration
+							duration: root.animationEnabled ? Theme.animation_briefPage_gaugeLabel_initialize_duration : 1
 						}
 					}
 				}
@@ -457,17 +459,16 @@ SwipeViewPage {
 		Transition {
 			to: "panelOpening"
 			from: "initialized"
-			enabled: Global.allPagesLoaded
 			SequentialAnimation {
 				NumberAnimation {
 					target: root
 					properties: "_gaugeArcOpacity,_gaugeLabelOpacity"
-					duration: Theme.animation_briefPage_edgeGauge_fade_duration
+					duration: root.animationEnabled ? Theme.animation_briefPage_sidePanel_slide_duration : 1
 				}
 				NumberAnimation {
 					target: sidePanel
 					properties: 'x,opacity'
-					duration: Theme.animation_briefPage_sidePanel_slide_duration
+					duration: root.animationEnabled ? Theme.animation_briefPage_sidePanel_slide_duration : 1
 					easing.type: Easing.InQuad
 				}
 				ScriptAction { script: root.state = "panelOpened" }
@@ -476,18 +477,17 @@ SwipeViewPage {
 		Transition {
 			to: "initialized"
 			from: "panelOpened"
-			enabled: Global.allPagesLoaded
 			SequentialAnimation {
 				NumberAnimation {
 					target: sidePanel
 					properties: 'x,opacity'
-					duration: Theme.animation_briefPage_sidePanel_slide_duration
+					duration: root.animationEnabled ? Theme.animation_briefPage_sidePanel_slide_duration : 1
 					easing.type: Easing.InQuad
 				}
 				NumberAnimation {
 					target: root
 					properties: "_gaugeArcOpacity,_gaugeLabelOpacity"
-					duration: Theme.animation_briefPage_edgeGauge_fade_duration
+					duration: root.animationEnabled ? Theme.animation_briefPage_sidePanel_slide_duration : 1
 				}
 				ScriptAction { script: sidePanel.active = false }
 			}

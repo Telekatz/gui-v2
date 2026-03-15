@@ -9,43 +9,31 @@ import Victron.VenusOS
 Page {
 	id: root
 
+	title: CommonWords.devices
+
 	GradientListView {
 		id: deviceListView
 
-		model: Global.allDevicesModel
+		model: SortedRuntimeDeviceModel {
+			sourceModel: RuntimeDeviceModel
+		}
 
 		delegate: BaseListLoader {
 			id: delegateLoader
 
-			required property bool connected
 			required property BaseDevice device
-			required property BaseDeviceModel sourceModel
 			required property string cachedDeviceName
-
-			readonly property bool _loadCustomDelegate: connected && !!device
-			property bool _usingCustomDelegate
+			property bool _completed
 
 			function _resetSource() {
-				if (_loadCustomDelegate) {
-					const serviceType = BackendConnection.serviceTypeFromUid(device.serviceUid)
-					if (!serviceType) {
-						console.warn("DeviceList: cannot load delegate, cannot read service type from serviceUid:", device.serviceUid)
-						return
-					}
-					if (source.toString().length === 0 || !_usingCustomDelegate) {
-						setSource("delegates/DeviceListDelegate_%1.qml".arg(serviceType), {
-							device: Qt.binding(function() { return delegateLoader.device }),
-							sourceModel: Qt.binding(function() { return delegateLoader.sourceModel }),
-						})
-						_usingCustomDelegate = true
-					}
+				if (!!device) {
+					setSource("delegates/DeviceListDelegate_%1.qml".arg(device.serviceType), {
+						device: Qt.binding(function() { return delegateLoader.device }),
+					})
 				} else {
-					if (source.toString().length === 0 || _usingCustomDelegate) {
-						setSource("delegates/DisconnectedDeviceListDelegate.qml", {
-							cachedDeviceName: Qt.binding(function() { return delegateLoader.cachedDeviceName }),
-						})
-						_usingCustomDelegate = false
-					}
+					setSource("delegates/DisconnectedDeviceListDelegate.qml", {
+						cachedDeviceName: Qt.binding(function() { return delegateLoader.cachedDeviceName }),
+					})
 				}
 			}
 
@@ -55,28 +43,66 @@ Page {
 
 			onStatusChanged: {
 				if (status === Loader.Error) {
-					console.log("Failed to load Device List delegate for '%1' service from file: %2"
+					console.warn("Failed to load Device List delegate for '%1' service from file: %2"
 						.arg(BackendConnection.serviceTypeFromUid(device.serviceUid))
 						.arg(source))
 				}
 			}
 
-			on_LoadCustomDelegateChanged: _resetSource()
-			Component.onCompleted: _resetSource()
+			onDeviceChanged: {
+				// Reset the content when the device is disconnected/reconnected.
+				if (_completed) {
+					_resetSource()
+				}
+			}
+			Component.onCompleted: {
+				_resetSource()
+				_completed = true
+			}
 		}
 
 		footer: SettingsColumn {
 			width: parent.width
 			topPadding: spacing
-			preferredVisible: gensetMenu.preferredVisible
+			preferredVisible: relaysMenu.preferredVisible
+					|| gensetMenu.preferredVisible
 					|| tankPumpMenu.preferredVisible
 					|| removeDisconnectedButton.preferredVisible
+
+			ListNavigation {
+				id: relaysMenu
+				text: CommonWords.gx_device_relays
+				preferredVisible: systemRelayModel.count > 0
+				onClicked: Global.pageManager.pushPage(switchableOutputPageComponent)
+
+				Component {
+					id: switchableOutputPageComponent
+					Page {
+						title: CommonWords.gx_device_relays
+
+						GradientListView {
+							model: systemRelayModel
+							delegate: SwitchableOutputListDelegate {}
+						}
+					}
+				}
+
+				IOChannelProxyModel {
+					id: systemRelayModel
+
+					sourceModel: VeQItemTableModel {
+						uids: [ Global.system.serviceUid + "/SwitchableOutput" ]
+						flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
+					}
+					filterType: IOChannelProxyModel.ManualFunction
+				}
+			}
 
 			ListNavigation {
 				id: gensetMenu
 				//% "Genset"
 				text: qsTrId("devicelistpage_genset")
-				preferredVisible: relay0.valid && relayFunction.valid && relayFunction.value === VenusOS.Relay_Function_GeneratorStartStop
+				preferredVisible: relay0.valid && relayFunction.valid && relayFunction.value === VenusOS.SwitchableOutput_Function_GeneratorStartStop
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageRelayGenerator.qml", {"title": text})
 
 				VeQuickItem {
@@ -87,7 +113,7 @@ Page {
 
 			ListNavigation {
 				id: tankPumpMenu
-				preferredVisible: relayFunction.valid && relayFunction.value === VenusOS.Relay_Function_Tank_Pump
+				preferredVisible: relayFunction.valid && relayFunction.value === VenusOS.SwitchableOutput_Function_Tank_Pump
 				//% "Tank pump"
 				text: qsTrId("settings_tank_pump")
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsTankPump.qml", {"title": text})
@@ -98,9 +124,9 @@ Page {
 				//% "Remove disconnected devices"
 				text: qsTrId("devicelist_remove_disconnected_devices")
 				secondaryText: CommonWords.remove
-				preferredVisible: Global.allDevicesModel.disconnectedDeviceCount > 0
+				preferredVisible: RuntimeDeviceModel.disconnectedDeviceCount > 0
 				onClicked: {
-					Global.allDevicesModel.removeDisconnectedDevices()
+					RuntimeDeviceModel.removeDisconnectedDevices()
 				}
 			}
 		}

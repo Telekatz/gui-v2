@@ -34,11 +34,14 @@ class BackendConnection : public QObject
 	Q_PROPERTY(QString portalId READ portalId WRITE setPortalId NOTIFY portalIdChanged FINAL)
 	Q_PROPERTY(QString shard READ shard WRITE setShard NOTIFY shardChanged FINAL)
 	Q_PROPERTY(QString token READ token WRITE setToken NOTIFY tokenChanged FINAL)
+	Q_PROPERTY(QString nodeRedUrl READ nodeRedUrl WRITE setNodeRedUrl NOTIFY nodeRedUrlChanged FINAL)
+	Q_PROPERTY(QString signalKUrl READ signalKUrl WRITE setSignalKUrl NOTIFY signalKUrlChanged FINAL)
 	Q_PROPERTY(QUrl demoImageFileName READ demoImageFileName CONSTANT FINAL)
 	Q_PROPERTY(int idUser READ idUser WRITE setIdUser NOTIFY idUserChanged FINAL)
 	Q_PROPERTY(bool vrm READ isVrm WRITE setVrm NOTIFY vrmChanged FINAL)
 	Q_PROPERTY(bool applicationVisible READ isApplicationVisible WRITE setApplicationVisible NOTIFY applicationVisibleChanged FINAL)
 	Q_PROPERTY(bool needsWasmKeyboardHandler READ needsWasmKeyboardHandler WRITE setNeedsWasmKeyboardHandler NOTIFY needsWasmKeyboardHandlerChanged FINAL)
+	Q_PROPERTY(bool msaaEnabled READ msaaEnabled WRITE setMsaaEnabled NOTIFY msaaEnabledChanged FINAL)
 
 	friend class BackendConnectionTester;
 public:
@@ -121,6 +124,12 @@ public:
 	QString token() const;
 	void setToken(const QString &tok);
 
+	QString nodeRedUrl() const;
+	void setNodeRedUrl(const QString &url);
+
+	QString signalKUrl() const;
+	void setSignalKUrl(const QString &url);
+
 	int idUser() const;
 	void setIdUser(int id);
 
@@ -136,7 +145,11 @@ public:
 	bool needsWasmKeyboardHandler() const;
 	void setNeedsWasmKeyboardHandler(bool needsWasmKeyboardHandler);
 
+	bool msaaEnabled() const;
+	void setMsaaEnabled(bool e);
+
 	QUrl demoImageFileName() const;
+	VeQItemProducer *producer() const;
 
 	// Each service type (system, settings, battery, etc.) has a base uid, which has different
 	// forms on D-Bus and MQTT:
@@ -162,9 +175,6 @@ public:
 	Q_INVOKABLE void reloadPage();
 	Q_INVOKABLE void openUrl(const QString &url);
 
-	// Move this to some mock data manager when available
-	Q_INVOKABLE void setMockValue(const QString &uid, const QVariant &value);
-	Q_INVOKABLE QVariant mockValue(const QString &uid) const;
 #if defined(VENUS_WEBASSEMBLY_BUILD)
 	Q_INVOKABLE void hitWatchdog();
 #endif
@@ -184,6 +194,10 @@ Q_SIGNALS:
 	void vrmChanged();
 	void applicationVisibleChanged();
 	void needsWasmKeyboardHandlerChanged();
+	void msaaEnabledChanged();
+	void nodeRedUrlChanged();
+	void signalKUrlChanged();
+	void producerChanged();
 
 private Q_SLOTS:
 	void onNetworkConfigChanged(const QVariant var);
@@ -214,9 +228,13 @@ private:
 	QString m_token;
 	int m_idUser = -1;
 
+	QString m_nodeRedUrl;
+	QString m_signalKUrl;
+
 	bool m_vrm = false;
 	bool m_applicationVisible = true;
 	bool m_needsWasmKeyboardHandler = false;
+	bool m_msaaEnabled = true;
 
 	State m_state = BackendConnection::State::Idle;
 	HeartbeatState m_heartbeatState = BackendConnection::HeartbeatState::HeartbeatActive;

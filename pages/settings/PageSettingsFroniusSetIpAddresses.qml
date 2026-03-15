@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls as C
 import Victron.VenusOS
 
 Page {
@@ -26,7 +25,9 @@ Page {
 		settingsListView.ipAddresses.setValue(addresses.join(','))
 	}
 
-	topRightButton: VenusOS.StatusBar_RightButton_Add
+	topRightButton: Global.systemSettings.canAccess(VenusOS.User_AccessType_Installer)
+			? VenusOS.StatusBar_RightButton_Add
+			: VenusOS.StatusBar_RightButton_None
 
 	IpAddressListView {
 		id: settingsListView
@@ -36,7 +37,7 @@ Page {
 	}
 
 	Connections {
-		target: !!Global.pageManager ? Global.pageManager.statusBar : null
+		target: Global.mainView?.statusBar ?? null
 		enabled: root.isCurrentPage
 
 		function onRightButtonClicked() {

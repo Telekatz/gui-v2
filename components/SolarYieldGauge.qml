@@ -5,7 +5,6 @@
 
 import QtQuick
 import Victron.VenusOS
-import QtQuick.Controls.impl as CP
 
 Item {
 	id: root
@@ -57,7 +56,7 @@ Item {
 		property var sampledAverages: []
 		property var _activeSamples: []
 
-		running: true
+		running: true // even if !Global.timersEnabled, to avoid discontinuities
 		repeat: true
 		interval: 30 * 1000
 		onTriggered: {

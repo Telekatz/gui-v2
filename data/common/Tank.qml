@@ -9,15 +9,8 @@ import Victron.VenusOS
 BaseTankDevice {
 	id: tank
 
-	readonly property real temperature: _temperature.valid ? _temperature.value : NaN
-
-	property TankModel _tankModel
-
 	readonly property VeQuickItem _status: VeQuickItem {
 		uid: serviceUid + "/Status"
-	}
-	readonly property VeQuickItem _temperature: VeQuickItem {
-		uid: serviceUid + "/Temperature"
 	}
 	readonly property VeQuickItem _type: VeQuickItem {
 		uid: serviceUid + "/FluidType"
@@ -52,22 +45,4 @@ BaseTankDevice {
 	level: _level.valid ? _level.value : NaN
 	capacity: _capacity.valid ? _capacity.value : NaN
 	remaining: _remaining.valid ? _remaining.value : NaN
-
-	onValidChanged: Qt.callLater(tank._updateModel)
-	onTypeChanged: Qt.callLater(tank._updateModel) // if type changes, move tank to the correct model
-
-	function _updateModel() {
-		if (valid && type >= 0) {
-			if (_tankModel && _tankModel.type !== type) {
-				_tankModel.removeDevice(tank.serviceUid)
-			}
-			_tankModel = Global.tanks.tankModel(type)
-			_tankModel.addDevice(tank)
-		} else {
-			if (_tankModel) {
-				_tankModel.removeDevice(tank.serviceUid)
-			}
-			_tankModel = null
-		}
-	}
 }

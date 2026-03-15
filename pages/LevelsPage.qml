@@ -5,7 +5,6 @@
 
 import QtQuick
 import Victron.VenusOS
-import QtQuick.Controls.impl as CP
 
 SwipeViewPage {
 	id: root
@@ -15,7 +14,7 @@ SwipeViewPage {
 
 	topLeftButton: VenusOS.StatusBar_LeftButton_ControlsInactive
 	fullScreenWhenIdle: true
-	activeFocusOnTab: true
+	focusPolicy: Qt.TabFocus
 	//% "Levels"
 	navButtonText: qsTrId("nav_levels")
 	navButtonIcon: "qrc:/images/levels.svg"
@@ -48,12 +47,12 @@ SwipeViewPage {
 				 : 0.0
 
 		Behavior on opacity {
-			enabled: root.isCurrentPage
+			enabled: root.animationEnabled && root.isCurrentPage
 			OpacityAnimator { duration: Theme.animation_page_idleOpacity_duration }
 		}
 
 		Behavior on anchors.topMargin {
-			enabled: root.isCurrentPage
+			enabled: root.animationEnabled && root.isCurrentPage
 			NumberAnimation { duration: Theme.animation_page_idleResize_duration; easing.type: Easing.InOutQuad }
 		}
 

@@ -9,13 +9,6 @@ import Victron.VenusOS
 Page {
 	id: root
 
-	readonly property bool allModificationsEnabled: allModificationsEnabledItem.valid && allModificationsEnabledItem.value === 1
-
-	VeQuickItem {
-		id: allModificationsEnabledItem
-		uid: Global.systemSettings.serviceUid + "/Settings/System/ModificationChecks/AllModificationsEnabled"
-	}
-
 	GradientListView {
 		id: settingsListView
 
@@ -35,6 +28,11 @@ Page {
 			SettingsListHeader { }
 			*/
 
+			SettingsListHeader {
+				//% "Device Integrations"
+				text: qsTrId("pagesettingsintegrations_device_integrations")
+			}
+
 			ListNavigation {
 				//% "PV Inverters"
 				text: qsTrId("pagesettingsintegrations_pv_inverters")
@@ -51,6 +49,12 @@ Page {
 				//% "Modbus Devices"
 				text: qsTrId("pagesettingsintegrations_modbus_devices")
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsModbus.qml", {"title": text})
+			}
+
+			ListNavigation {
+				//% "Shelly Devices"
+				text: qsTrId("pagesettingsintegrations_shelly_devices")
+				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsShelly.qml", {"title": text})
 			}
 
 			ListNavigation {
@@ -117,7 +121,7 @@ Page {
 
 				VeQuickItem {
 					id: relay0
-					uid: Global.system.serviceUid + "/Relay/0/State"
+					uid: Global.system.serviceUid + "/SwitchableOutput/0/Name"
 				}
 			}
 
@@ -129,10 +133,28 @@ Page {
 				preferredVisible: digitalModel.rowCount > 0
 				onClicked: Global.pageManager.pushPage(digitalInputsComponent, {"title": text})
 
-				VeQItemTableModel {
+				VeQItemSortTableModel {
 					id: digitalModel
-					uids: [ BackendConnection.serviceUidForType("digitalinputs") + "/Devices" ]
-					flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
+					sortColumn: childValues.sortValueColumn
+					dynamicSortFilter: true
+					filterFlags: VeQItemSortTableModel.FilterInvalid
+
+					model: VeQItemChildModel {
+						id: childValues
+
+						model: VeQItemTableModel {
+							uids: [ BackendConnection.serviceUidForType("digitalinputs") + "/Devices" ]
+							flags: VeQItemTableModel.AddChildren | VeQItemTableModel.AddNonLeaves | VeQItemTableModel.DontAddItem
+						}
+						childId: "Label"
+						sortDelegate: VeQItemSortDelegate {
+							VeQuickItem {
+								id: labelItem
+								uid: buddy.uid + "/Label"
+							}
+							sortValue: labelItem.value || ""
+						}
+					}
 				}
 
 				Component {
@@ -155,22 +177,12 @@ Page {
 
 						GradientListView {
 							model: digitalModel
-
 							delegate: ListRadioButtonGroup {
-								text: inputLabel.value || ""
-								dataItem.uid: model.uid + "/Type"
+								required property VeQItem item
+
+								text: item.value || ""
+								dataItem.uid: item.itemParent().uid + "/Type"
 								optionModel: delegateOptionModel
-
-								// TODO ideally digitalModel would filter out offline items using
-								// VeQItemSortTableModel.FilterOffline, but currently those are only
-								// filtered out when the service is offline, rather than the leaf
-								// items.
-								preferredVisible: dataItem.valid
-
-								VeQuickItem {
-									id: inputLabel
-									uid: model.uid + "/Label"
-								}
 							}
 						}
 					}
@@ -199,56 +211,27 @@ Page {
 
 			SettingsListHeader {
 				id: osLargeFeatures
-
-				//% "Venus OS Large Features"
-				text: qsTrId("pagesettingsintegrations_venus_os_large_features")
-				visible: signalk.preferredVisible || nodeRed.preferredVisible
+				readonly property bool largeEnabled: signalk.preferredVisible || nodeRed.preferredVisible
+				text: largeEnabled
+					//% "Venus OS Large Features"
+					? qsTrId("pagesettingsintegrations_venus_os_large_features")
+					//% "Enable the Venus OS Large firmware to use Node-RED or Signal-K"
+					: qsTrId("pagesettingsintegrations_venus_os_enable_large_features")
 			}
 
-			PrimaryListLabel {
-				//% "Note that the following features are not officially supported by Victron. Please turn to the Victron Community for questions."
-				text: qsTrId("settings_large_features_not_offically_supported")
-				preferredVisible: osLargeFeatures.visible
-			}
-
-			ListLink {
-				//% "Documentation"
-				text: qsTrId("settings_large_documentation")
-				url: "https://ve3.nl/vol"
-				preferredVisible: osLargeFeatures.visible
-			}
-
-			ListLink {
-				//% "Victron Community"
-				text: qsTrId("settings_large_victron_community")
-				url: "https://community.victronenergy.com"
-				preferredVisible: osLargeFeatures.visible
-			}
-
-			SettingsListHeader {
-				preferredVisible: osLargeFeatures.visible
-			}
-
-			PrimaryListLabel {
-				text: CommonWords.all_modifications_disabled
-				preferredVisible: osLargeFeatures.visible && !root.allModificationsEnabled
-			}
-
-			ListSwitch {
+			ListNavigation {
 				id: signalk
 
 				//% "Signal K"
 				text: qsTrId("settings_large_signal_k")
-				dataItem.uid: Global.venusPlatform.serviceUid + "/Services/SignalK/Enabled"
-				interactive: userHasWriteAccess && root.allModificationsEnabled
-				preferredVisible: dataItem.valid
-			}
+				secondaryText: signalkItem.valid && signalkItem.value ? CommonWords.enabled : CommonWords.disabled
+				preferredVisible: signalkItem.valid
+				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsSignalK.qml", {"title": text })
 
-			ListLink {
-				//% "Access Signal K locally or via VRM"
-				text: qsTrId("settings_large_access_signal_k")
-				url: "http://venus.local:3000"
-				preferredVisible: signalk.checked
+				VeQuickItem {
+					id: signalkItem
+					uid: Global.venusPlatform.serviceUid + "/Services/SignalK/Enabled"
+				}
 			}
 
 			ListNavigation {
@@ -276,6 +259,72 @@ Page {
 				VeQuickItem {
 					id: nodeRedModeItem
 					uid: Global.venusPlatform.serviceUid + "/Services/NodeRed/Mode"
+				}
+			}
+
+			ListLink {
+				//% "Venus OS Large Documentation"
+				text: qsTrId("settings_venusos_large_documentation")
+				url: "https://ve3.nl/vol"
+				preferredVisible: osLargeFeatures.largeEnabled
+			}
+
+			ListLink {
+				//% "Victron Community"
+				text: qsTrId("settings_large_victron_community")
+				url: "https://community.victronenergy.com"
+				preferredVisible: osLargeFeatures.largeEnabled
+			}
+
+			SettingsListHeader {
+				id: guiPluginsHeader
+
+				//% "UI Plugins"
+				text: qsTrId("pagesettingsintegrations_ui_plugins")
+				preferredVisible: GuiPluginLoader.plugins.length > 0
+			}
+
+			SettingsColumn {
+				width: parent ? parent.width : 0
+				preferredVisible: guiPluginsHeader.preferredVisible
+				Repeater {
+					model: GuiPluginModel { id: pluginModel }
+					delegate: SettingsListNavigation {
+						id: switchNavigationItem
+
+						required property string name
+						required property color color
+						required property var integrations
+						readonly property var pluginSettingsPageIntegration: {
+							if (integrations !== null && integrations.length > 0) {
+								for (let i = 0; i < integrations.length; ++i) {
+									if (integrations[i].type === GuiPluginLoader.PluginSettingsPage) {
+										return integrations[i]
+									}
+								}
+							}
+							return null
+						}
+						readonly property bool hasDeviceListIntegration: {
+							if (integrations !== null && integrations.length > 0) {
+								for (let i = 0; i < integrations.length; ++i) {
+									if (integrations[i].type === GuiPluginLoader.DeviceListSettingsPage) {
+										return true
+									}
+								}
+							}
+							return false
+						}
+
+						text: switchNavigationItem.name
+						secondaryText: hasDeviceListIntegration
+							   //% "Integrates with the device list"
+							? qsTrId("pagesettingsintegrations_uiplugin_integrates_with_devicelist")
+							: ""
+						indicatorColor: switchNavigationItem.color
+						pageSource: switchNavigationItem.pluginSettingsPageIntegration?.url ?? ""
+						interactive: switchNavigationItem.pluginSettingsPageIntegration !== null
+					}
 				}
 			}
 		}

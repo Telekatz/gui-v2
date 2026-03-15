@@ -6,12 +6,14 @@
 import QtQuick
 import Victron.VenusOS
 
-Page {
+/*
+	Provides a list of settings for a solarcharger device.
+*/
+DevicePage {
 	id: root
 
 	required property string bindPrefix
 	readonly property int trackerCount: nrOfTrackers.valid ? nrOfTrackers.value : 1
-	readonly property SolarDevice solarDevice: Global.solarDevices.model.deviceAt(Global.solarDevices.model.indexOf(bindPrefix))
 
 	function _isModelSupported() {
 		if (!device.productId || !firmwareVersion.valid) {
@@ -33,12 +35,8 @@ Page {
 		return true
 	}
 
-	title: device.name
-
-	Device {
-		id: device
-		serviceUid: root.bindPrefix
-	}
+	serviceUid: root.bindPrefix
+	settingsModel: _isModelSupported() ? supportedProductModel : unsupportedProductModel
 
 	VeQuickItem {
 		id: firmwareVersion
@@ -60,10 +58,6 @@ Page {
 		uid: root.bindPrefix + "/Alarms/ShortCircuit"
 	}
 
-	GradientListView {
-		model: _isModelSupported() ? supportedProductModel : unsupportedProductModel
-	}
-
 	VisibleItemModel {
 		id: unsupportedProductModel
 
@@ -80,14 +74,6 @@ Page {
 					reason = qsTrId("solarcharger_not_supported_reason_version")
 				}
 				return unsupported + (reason ? "\n" + reason : "")
-			}
-		}
-
-		ListNavigation {
-			text: CommonWords.device_info_title
-			onClicked: {
-				Global.pageManager.pushPage("/pages/settings/PageDeviceInfo.qml",
-						{ "title": text, "bindPrefix": root.bindPrefix })
 			}
 		}
 	}
@@ -151,38 +137,38 @@ Page {
 
 			QuantityTable {
 				id: trackerTable
-				rowCount: root.trackerCount
-				units: [
-					{ title: CommonWords.tracker, unit: VenusOS.Units_None },
-					{ title: CommonWords.voltage, unit: VenusOS.Units_Volt_DC },
-					{ title: CommonWords.current_amps, unit: VenusOS.Units_Amp },
-					{ title: CommonWords.power_watts, unit: VenusOS.Units_Watt }
-				]
-				valueForModelIndex: function(trackerIndex, column) {
-					const tracker = trackerObjects.objectAt(trackerIndex)
-					if (column === 0) {
-						return Global.solarDevices.formatTrackerName(tracker.name, trackerIndex, root.trackerCount, root.solarDevice.name, VenusOS.TrackerName_NoDevicePrefix)
-					} else if (column === 1) {
-						return tracker.voltage
-					} else if (column === 2) {
-						return tracker.current
-					} else if (column === 3) {
-						return tracker.power
+				width: parent.width
+				model: root.trackerCount > 1 ? root.trackerCount : 0
+				header: count > 0 ? tableHeaderComponent : null
+				delegate: QuantityTable.TableRow {
+					id: tableRow
+
+					preferredVisible: tracker.enabled
+					headerText: tracker.name
+					model: QuantityObjectModel {
+						QuantityObject { object: tracker; key: "voltage"; unit: VenusOS.Units_Volt_DC }
+						QuantityObject { object: tracker; key: "current"; unit: VenusOS.Units_Amp }
+						QuantityObject { object: tracker; key: "power"; unit: VenusOS.Units_Watt }
+					}
+
+					SolarTracker {
+						id: tracker
+						serviceUid: root.bindPrefix
+						trackerIndex: tableRow.index
+						trackerCount: root.trackerCount
 					}
 				}
-				rowIsVisible: function(row) {
-					const tracker = trackerObjects.objectAt(row)
-					return tracker.enabled
-				}
 
-				Instantiator {
-					id: trackerObjects
-					model: root.solarDevice.trackerCount
-					delegate: SolarTracker {
-						required property int index
+				Component {
+					id: tableHeaderComponent
 
-						device: root.solarDevice
-						trackerIndex: index
+					QuantityTable.TableHeader {
+						headerText: CommonWords.tracker
+						model: [
+							{ text: CommonWords.voltage, unit: VenusOS.Units_Volt_DC },
+							{ text: CommonWords.current_amps, unit: VenusOS.Units_Amp },
+							{ text: CommonWords.power_watts, unit: VenusOS.Units_Watt }
+						]
 					}
 				}
 			}
@@ -284,14 +270,7 @@ Page {
 			preferredVisible: root.trackerCount > 0
 			onClicked: {
 				Global.pageManager.pushPage("/pages/solar/SolarHistoryPage.qml",
-						{ "solarHistory": solarHistory })
-			}
-
-			SolarHistory {
-				id: solarHistory
-				bindPrefix: root.bindPrefix
-				deviceName: root.title
-				trackerCount: root.trackerCount
+						{ "serviceUid": root.bindPrefix })
 			}
 		}
 
@@ -316,14 +295,6 @@ Page {
 			VeQuickItem {
 				id: linkNetworkStatus
 				uid: root.bindPrefix + "/Link/NetworkStatus"
-			}
-		}
-
-		ListNavigation {
-			text: CommonWords.device_info_title
-			onClicked: {
-				Global.pageManager.pushPage("/pages/settings/PageDeviceInfo.qml",
-						{ "title": text, "bindPrefix": root.bindPrefix })
 			}
 		}
 	}

@@ -23,13 +23,34 @@ AcWidget {
 		model: root.measurements.phases
 		widgetSize: root.size
 		valueType: VenusOS.Gauges_ValueType_RisingPercentage
-		phaseModelProperty: "current"
 		maximumValue: Global.system.load.maximumAcCurrent
 	}
 	extraContentLoader.active: root.phaseCount > 1 || root.measurements.l2AndL1OutSummed
 
-	// Heat pumps with Position=1 (AC input) are considered as "AC Loads", so they are
+	// AC meters with Position=1 (AC input) are considered as "AC Loads", so they are
 	// accessible from this AC Loads widget.
-	enabled: Global.allDevicesModel.heatPumpInputDevices.count > 0
-	onClicked: openDevicePageOrList(Global.allDevicesModel.heatPumpInputDevices)
+	// For 3-phase systems, the drilldown is always enabled.
+	// For 1-phase systems, only enable the drilldown if there are devices to be shown.
+	enabled: root.measurements.phaseCount > 1 || acLoadDevices.count > 0
+
+	onClicked: {
+		Global.pageManager.pushPage("/pages/loads/AcLoadListPage.qml", {
+			title: root.title,
+			measurements: root.measurements,
+			model: acLoadDevices,
+		})
+	}
+
+	FilteredDeviceModel {
+		id: acLoadDevices
+		serviceTypes: ["acload", "evcharger", "heatpump"]
+		childFilterIds: Global.system.showInputLoads
+				? { "acload": ["Position"], "evcharger": ["Position"], "heatpump": ["Position"] }
+				: {}
+		childFilterFunction: (device, childItems) => {
+			// If a service does not have a /Position value, assume it is in the "input" position.
+			const pos = childItems["Position"]
+			return !pos || pos.value === undefined || pos.value === VenusOS.AcPosition_AcInput
+		}
+	 }
 }

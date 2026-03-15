@@ -9,9 +9,14 @@ import Victron.VenusOS
 Page {
 	id: root
 
-	property var pvInverter
+	required property string serviceUid
 
 	title: pvInverter.name
+
+	PvInverter {
+		id: pvInverter
+		serviceUid: root.serviceUid
+	}
 
 	GradientListView {
 		model: VisibleItemModel {
@@ -22,33 +27,22 @@ Page {
 				QuantityTableSummary {
 					id: phaseSummary
 
-					model: [
-						{
-							title: root.pvInverter.statusCode >= 0 ? CommonWords.status : "",
-							text: VenusOS.pvInverter_statusCodeToText(root.pvInverter.statusCode),
-							unit: VenusOS.Units_None,
-						},
-						{
-							title: CommonWords.energy,
-							value: root.pvInverter.energy,
-							unit: VenusOS.Units_Energy_KiloWattHour
-						},
-						{
-							title: CommonWords.voltage,
-							value: root.pvInverter.voltage,
-							unit: VenusOS.Units_Volt_AC
-						},
-						{
-							title: CommonWords.current_amps,
-							value: root.pvInverter.current,
-							unit: VenusOS.Units_Amp
-						},
-						{
-							title: CommonWords.power_watts,
-							value: root.pvInverter.power,
-							unit: VenusOS.Units_Watt
-						},
+					width: parent.width
+					columnSpacing: Theme.geometry_quantityTable_horizontalSpacing_small
+					summaryHeaderText: pvInverter.statusCode >= 0 ? CommonWords.status : ""
+					summaryModel: [
+						{ text: CommonWords.energy, unit: VenusOS.Units_Energy_KiloWattHour },
+						{ text: CommonWords.voltage, unit: VenusOS.Units_Volt_AC },
+						{ text: CommonWords.current_amps, unit: VenusOS.Units_Amp },
+						{ text: CommonWords.power_watts, unit: VenusOS.Units_Watt }
 					]
+					bodyHeaderText: VenusOS.pvInverter_statusCodeToText(pvInverter.statusCode)
+					bodyModel: QuantityObjectModel {
+						QuantityObject { object: pvInverter; key: "energy"; unit: VenusOS.Units_Energy_KiloWattHour }
+						QuantityObject { object: pvInverter; key: "voltage"; unit: VenusOS.Units_Volt_AC }
+						QuantityObject { object: pvInverter; key: "current"; unit: VenusOS.Units_Amp }
+						QuantityObject { object: pvInverter; key: "power"; unit: VenusOS.Units_Watt }
+					}
 				}
 
 				QuantityTable {
@@ -58,27 +52,34 @@ Page {
 						top: phaseSummary.bottom
 						topMargin: Theme.geometry_gradientList_spacing
 					}
-					visible: root.pvInverter.phases.count > 1
-					headerVisible: false
+					width: phaseSummary.width
+					visible: pvInverter.phases.count > 1
+					metricsFontSize: phaseSummary.metricsFontSize
+					columnSpacing: phaseSummary.columnSpacing
+					model: pvInverter.phases.count > 1 ? pvInverter.phases : 0
 
-					rowCount: root.pvInverter.phases.count
-					units: [
-						{ title: CommonWords.phase, unit: VenusOS.Units_None },
-						{ title: CommonWords.energy, unit: VenusOS.Units_Energy_KiloWattHour },
-						{ title: CommonWords.voltage, unit: VenusOS.Units_Volt_AC },
-						{ title: CommonWords.current_amps, unit: VenusOS.Units_Amp },
-						{ title: CommonWords.power_watts, unit: VenusOS.Units_Watt }
-					]
-					valueForModelIndex: function(phaseIndex, column) {
-						const phase = root.pvInverter.phases.getPhase(phaseIndex)
-						const columnProperties = ["name", "energy", "voltage", "current", "power"]
-						return phase[columnProperties[column]]
+					delegate: QuantityTable.TableRow {
+						id: tableRow
+
+						required property string name
+						required property real energy
+						required property real voltage
+						required property real current
+						required property real power
+
+						headerText: name
+						model: QuantityObjectModel {
+							QuantityObject { object: tableRow; key: "energy"; unit: VenusOS.Units_Energy_KiloWattHour }
+							QuantityObject { object: tableRow; key: "voltage"; unit: VenusOS.Units_Volt_AC }
+							QuantityObject { object: tableRow; key: "current"; unit: VenusOS.Units_Amp }
+							QuantityObject { object: tableRow; key: "power"; unit: VenusOS.Units_Watt }
+						}
 					}
 				}
 			}
 
 			ListPvInverterPositionRadioButtonGroup {
-				dataItem.uid: root.pvInverter.serviceUid + "/Position"
+				dataItem.uid: pvInverter.serviceUid + "/Position"
 				preferredVisible: (!positionIsAdjustable.valid || positionIsAdjustable.value === 1) ? dataItem.valid : false
 
 				// Datapoint will exist in VM-3P75CT energy meters, but usually will not exist.
@@ -86,28 +87,28 @@ Page {
 				// Value will be zero if the position setting is not adjustable via gui-v2.
 				VeQuickItem {
 					id: positionIsAdjustable
-					uid: root.pvInverter.serviceUid + "/PositionIsAdjustable"
+					uid: pvInverter.serviceUid + "/PositionIsAdjustable"
 				}
 			}
 
 			ListQuantity {
 				text: CommonWords.dynamic_power_limit
 				unit: VenusOS.Units_Watt
-				dataItem.uid: root.pvInverter.serviceUid + "/Ac/PowerLimit"
+				dataItem.uid: pvInverter.serviceUid + "/Ac/PowerLimit"
 				preferredVisible: dataItem.valid
 			}
 
 			ListAcInError {
 				text: CommonWords.error
-				bindPrefix: root.pvInverter.serviceUid
-				secondaryLabel.color: root.pvInverter.errorCode > 0 ? Theme.color_critical : Theme.color_font_secondary
+				bindPrefix: pvInverter.serviceUid
+				secondaryLabel.color: pvInverter.errorCode > 0 ? Theme.color_critical : Theme.color_font_secondary
 			}
 
 			ListNavigation {
-				text: CommonWords.device_info_title
+				text: CommonWords.product_page
 				onClicked: {
-					Global.pageManager.pushPage("/pages/settings/PageDeviceInfo.qml",
-							{ "title": text, "bindPrefix": root.pvInverter.serviceUid })
+					Global.pageManager.pushPage("/pages/settings/devicelist/ac-in/PageAcIn.qml",
+							{ title: text, bindPrefix: pvInverter.serviceUid })
 				}
 			}
 		}

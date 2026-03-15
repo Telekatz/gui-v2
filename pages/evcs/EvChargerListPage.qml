@@ -26,42 +26,49 @@ Page {
 				QuantityTableSummary {
 					id: summary
 
-					width: parent.width - Theme.geometry_listItem_content_horizontalMargin
-					model: [
-						{
-							title: "",
-							text: CommonWords.total,
-							unit: VenusOS.Units_None
-						},
-						{
-							title: CommonWords.power_watts,
-							value: Global.evChargers.power,
-							unit: VenusOS.Units_Watt
-						},
-						{
-							title: CommonWords.energy,
-							value: Global.evChargers.energy,
-							unit: VenusOS.Units_Energy_KiloWattHour
-						}
+					width: parent.width
+					rightPadding: Theme.geometry_listItem_content_horizontalMargin + Theme.geometry_icon_size_medium
+					//% "Session"
+					summaryHeaderText: qsTrId("evcs_charger_list_session")
+					summaryModel: [
+						{ text: CommonWords.power_watts, unit: VenusOS.Units_Watt },
+						{ text: CommonWords.energy, unit: VenusOS.Units_Energy_KiloWattHour },
 					]
+					bodyHeaderText: CommonWords.total
+					bodyModel: QuantityObjectModel {
+						QuantityObject { object: Global.evChargers; key: "power"; unit: VenusOS.Units_Watt }
+						QuantityObject { object: Global.evChargers; key: "energy"; unit: VenusOS.Units_Energy_KiloWattHour }
+					}
 				}
 			}
 		}
 
-		model: Global.evChargers.model
+		model: SortedEvChargerDeviceModel {
+			sourceModel: Global.evChargers.model
+		}
 		delegate: ListQuantityGroupNavigation {
 			id: evChargerDelegate
 
-			readonly property string statusText: Global.evChargers.chargerStatusToText(model.device.status)
+			required property BaseDevice device
+			required property int status
+			required property real energy
+			readonly property string statusText: Global.evChargers.chargerStatusToText(status)
 
-			text: model.device.name
+			text: device.name
 			quantityModel: QuantityObjectModel {
 				// Energy is only shown when charging.
-				QuantityObject { object: model.device.status === VenusOS.Evcs_Status_Charging ? model.device : null; key: "energy"; unit: VenusOS.Units_Energy_KiloWattHour }
+				filterType: QuantityObjectModel.HasValue
+				QuantityObject {
+					object: evChargerDelegate.status === VenusOS.Evcs_Status_Charging ? evChargerDelegate : null
+					key: "energy"
+					unit: VenusOS.Units_Energy_KiloWattHour
+				}
 				QuantityObject { object: evChargerDelegate; key: "statusText" }
 			}
 
-			onClicked: Global.pageManager.pushPage("/pages/evcs/EvChargerPage.qml", { bindPrefix: model.device.serviceUid })
+			onClicked: {
+				Global.pageManager.pushPage("/pages/evcs/EvChargerPage.qml", { bindPrefix: device.serviceUid })
+			}
 		}
 	}
 }

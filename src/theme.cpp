@@ -7,11 +7,24 @@
 
 using namespace Victron::VenusOS;
 
+// Global pointer to current theme instance
+static Victron::VenusOS::Theme *g_themeInstance = nullptr;
+
 #if defined(VENUS_WEBASSEMBLY_BUILD)
 #include <emscripten.h>
+#include <emscripten/bind.h>
+#include <emscripten/val.h>
 
 EM_JS(int, getScreenWidth, (), {
-  return Math.min(screen.width, screen.height);
+	return Math.min(screen.width, screen.height);
+});
+
+EM_JS(int, getWindowWidth, (), {
+	return window.innerWidth;
+});
+
+EM_JS(int, getWindowHeight, (), {
+	return window.innerHeight;
 });
 
 #endif
@@ -21,8 +34,26 @@ Theme::Theme(QObject *parent) : QObject(parent)
 #if defined(VENUS_WEBASSEMBLY_BUILD)
 	// 5"-6" Smartphones have 320 - 480 CSS independent pixel wide screens.
 	setScreenSize(getScreenWidth() >= 480
-				  ? Victron::VenusOS::Theme::SevenInch
-				  : Victron::VenusOS::Theme::FiveInch);
+		? Victron::VenusOS::Theme::SevenInch
+		: Victron::VenusOS::Theme::FiveInch);
+
+	// Assign global instance for callbacks
+	g_themeInstance = this;
+
+	// Detect current color scheme and listen for changes
+	emscripten::val mql = emscripten::val::global("window").call<emscripten::val>("matchMedia", std::string("(prefers-color-scheme: dark)"));
+	bool isSystemSchemeDark = mql["matches"].as<bool>();
+
+	setSystemColorScheme(isSystemSchemeDark ? Victron::VenusOS::Theme::SystemColorSchemeDark
+								: Victron::VenusOS::Theme::SystemColorSchemeLight);
+
+	// Sets the initial color to the same as the HTML loading screen until the right setting is available and applied
+	// This prevents changing color scheme too often during startup
+	setColorScheme(isSystemSchemeDark ? Victron::VenusOS::Theme::Dark
+								: Victron::VenusOS::Theme::Light);
+
+	// Register JavaScript listener for dynamic updates
+	mql.call<void>("addEventListener", std::string("change"), emscripten::val::module_property("jsSystemColorSchemeChanged"));
 #else
 	const QSizeF physicalScreenSize = QGuiApplication::primaryScreen()->physicalSize();
 	const int screenDiagonalMm = static_cast<int>(sqrt((physicalScreenSize.width() * physicalScreenSize.width())
@@ -31,6 +62,11 @@ Theme::Theme(QObject *parent) : QObject(parent)
 		? Victron::VenusOS::Theme::SevenInch
 		: Victron::VenusOS::Theme::FiveInch);
 #endif
+}
+
+Theme *Theme::instance()
+{
+	return g_themeInstance;
 }
 
 Victron::VenusOS::Theme::ScreenSize Theme::screenSize() const
@@ -61,6 +97,44 @@ void Theme::setColorScheme(Victron::VenusOS::Theme::ColorScheme scheme)
 	}
 }
 
+Victron::VenusOS::Theme::SystemColorScheme Theme::systemColorScheme() const
+{
+	return m_systemColorScheme;
+}
+
+void Theme::setSystemColorScheme(Victron::VenusOS::Theme::SystemColorScheme systemScheme)
+{
+	if (m_systemColorScheme != systemScheme) {
+		m_systemColorScheme = systemScheme;
+		Q_EMIT systemColorSchemeChanged(systemScheme);
+		Q_EMIT systemColorSchemeChanged_parameterless(); // work around moc limitation.
+	}
+}
+
+Victron::VenusOS::Theme::ForcedColorScheme Theme::forcedColorScheme() const
+{
+	return m_forcedColorScheme;
+}
+
+void Theme::setForcedColorScheme(Victron::VenusOS::Theme::ForcedColorScheme forcedScheme)
+{
+	if (m_forcedColorScheme != forcedScheme) {
+		m_forcedColorScheme = forcedScheme;
+		Q_EMIT forcedColorSchemeChanged(forcedScheme);
+
+		if (forcedScheme == Victron::VenusOS::Theme::ForcedColorSchemeDark) {
+			setColorScheme(Victron::VenusOS::Theme::Dark);
+		} else if (forcedScheme == Victron::VenusOS::Theme::ForcedColorSchemeLight) {
+			setColorScheme(Victron::VenusOS::Theme::Light);
+		} else if (forcedScheme == Victron::VenusOS::Theme::ForcedColorSchemeAuto) {
+			// Auto mode: use system color scheme
+			setColorScheme(m_systemColorScheme == Victron::VenusOS::Theme::SystemColorSchemeDark
+				? Victron::VenusOS::Theme::Dark
+				: Victron::VenusOS::Theme::Light);
+		}
+	}
+}
+
 Victron::VenusOS::Theme::StatusLevel Theme::getValueStatus(qreal value, Victron::VenusOS::Enums::Gauges_ValueType valueType) const
 {
 	if (valueType == Victron::VenusOS::Enums::Gauges_ValueType_RisingPercentage) {
@@ -76,6 +150,15 @@ Victron::VenusOS::Theme::StatusLevel Theme::getValueStatus(qreal value, Victron:
 	}
 }
 
+bool Theme::windowIsLandscape() const
+{
+#if defined(VENUS_WEBASSEMBLY_BUILD)
+	return getWindowWidth() > getWindowHeight();
+#else
+	return false;
+#endif
+}
+
 bool Theme::objectHasQObjectParent(QObject *obj) const
 {
 	return obj && obj->parent();
@@ -85,3 +168,21 @@ QString Theme::applicationVersion() const
 {
 	return QStringLiteral("v%1.%2.%3").arg(PROJECT_VERSION_MAJOR).arg(PROJECT_VERSION_MINOR).arg(PROJECT_VERSION_PATCH);
 }
+
+#if defined(VENUS_WEBASSEMBLY_BUILD)
+
+// Called from JavaScript when theme changes
+void jsSystemColorSchemeChanged(emscripten::val event)
+{
+	if (!g_themeInstance)
+		return;
+
+	const bool systemSchemeDark = event["matches"].as<bool>();
+	g_themeInstance->setSystemColorScheme(systemSchemeDark ? Victron::VenusOS::Theme::SystemColorSchemeDark : Victron::VenusOS::Theme::SystemColorSchemeLight);
+}
+
+// Bind C++ function to JS
+EMSCRIPTEN_BINDINGS(theme_bindings) {
+	function("jsSystemColorSchemeChanged", &jsSystemColorSchemeChanged);
+}
+#endif

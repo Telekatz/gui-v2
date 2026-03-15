@@ -19,6 +19,7 @@ Page {
 				//% "Adaptive brightness"
 				text: qsTrId("settings_adaptive_brightness")
 				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gui/AutoBrightness"
+				writeAccessLevel: VenusOS.User_AccessType_User
 				preferredVisible: Qt.platform.os != "wasm" && dataItem.valid && dataItem.max === 1
 			}
 
@@ -54,21 +55,63 @@ Page {
 			}
 
 			ListRadioButtonGroup {
-				//% "Display mode"
-				text: qsTrId("settings_display_color_mode")
+				//% "GX display appearance"
+				text: qsTrId("settings_gx_display_appearance")
+				writeAccessLevel: VenusOS.User_AccessType_User
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gui/ColorScheme"
 				optionModel: [
 					//: Dark colors mode
 					//% "Dark"
-					{ display: qsTrId("settings_display_dark_mode") },
+					{ display: qsTrId("settings_display_dark_mode"), value: Theme.Dark },
 					//: Light colors mode
 					//% "Light"
-					{ display: qsTrId("settings_display_light_mode") },
+					{ display: qsTrId("settings_display_light_mode"), value: Theme.Light },
 				]
-				currentIndex: Theme.colorScheme === Theme.Light ? 1 : 0
+			}
 
-				onOptionClicked: function(index) {
-					Global.systemSettings.colorScheme.setValue(index === 1 ? Theme.Light : Theme.Dark)
-				}
+			ListText {
+				//% "Remote Console appearance"
+				text: qsTrId("settings_remote_console_appearance")
+				//: %1 = "dark", "light" or "auto"
+				//: %2 = "VRM" or "app"
+				//% "Forced by %2 to %1"
+				secondaryText: qsTrId("settings_remote_console_forced").arg(
+					Theme.forcedColorScheme === Theme.ForcedColorSchemeDark
+						//: Forced by app to %1
+						//% "dark"
+						? qsTrId("settings_remote_console_forced_appearance_dark")
+						: Theme.forcedColorScheme === Theme.ForcedColorSchemeLight
+							//: Forced by app to %1
+							//% "light"
+							? qsTrId("settings_remote_console_forced_appearance_light")
+							//: Forced by app to %1
+							//% "auto"
+							: qsTrId("settings_remote_console_forced_appearance_auto")
+				).arg(
+					BackendConnection.vrm
+					//: Forced by %2 to dark
+					//% "VRM"
+					? qsTrId("settings_remote_console_forced_by_vrm")
+					//: Forced by %2 to dark
+					//% "app"
+					: qsTrId("settings_remote_console_forced_by_app")
+				)
+				writeAccessLevel: VenusOS.User_AccessType_User
+				preferredVisible: Theme.forcedColorScheme !== Theme.ForcedColorSchemeDefault
+			}
+
+			ListRadioButtonGroup {
+				//% "Remote Console appearance"
+				text: qsTrId("settings_remote_console_appearance")
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gui/RemoteConsoleColorMode"
+				writeAccessLevel: VenusOS.User_AccessType_User
+				optionModel: [
+					//% "Same as GX display"
+					{ display: qsTrId("settings_remote_console_appearance_same_as_gx_display"), value: VenusOS.RemoteConsoleColorMode_FollowDisplayMode },
+					//% "Auto"
+					{ display: qsTrId("settings_remote_console_appearance_auto"), value: VenusOS.RemoteConsoleColorMode_FollowSystemTheme },
+				]
+				preferredVisible: Theme.forcedColorScheme === Theme.ForcedColorSchemeDefault
 			}
 
 			ListNavigation {
@@ -87,10 +130,10 @@ Page {
 				}
 			}
 
-			ListSwitch {
+			ListNavigation {
 				//% "Boat page"
-				text: qsTrId("settings_display_boat_page")
-				dataItem.uid: !!Global.systemSettings ? Global.systemSettings.serviceUid + "/Settings/Gui/ElectricPropulsionUI/Enabled" : ""
+				text: qsTrId("pagesettingsgeneral_boat_page")
+				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsBoatPage.qml", {"title": text})
 			}
 
 			ListNavigation {
@@ -105,6 +148,17 @@ Page {
 				onClicked: {
 					Global.pageManager.pushPage("/pages/settings/PageSettingsDisplayMinMax.qml", {"title": text})
 				}
+			}
+
+			ListSwitch {
+				id: animationsEnabled
+				//% "UI Animations"
+				text: qsTrId("settings_ui_animations")
+				//% "Disable to reduce CPU usage"
+				secondaryText: qsTrId("settings_ui_animations_description")
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gui2/UIAnimations"
+				preferredVisible: dataItem.valid
+				writeAccessLevel: VenusOS.User_AccessType_User
 			}
 
 			ListRadioButtonGroup {

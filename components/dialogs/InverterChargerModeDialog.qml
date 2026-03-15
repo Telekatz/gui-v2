@@ -31,8 +31,6 @@ ModalDialog {
 			 //% "Inverter / Charger mode"
 		   : qsTrId("controlcard_inverter_charger_mode")
 
-	height: header.height + contentHeight + footer.height
-
 	contentItem: ModalDialog.FocusableContentItem {
 		anchors {
 			top: root.title.bottom
@@ -103,6 +101,7 @@ ModalDialog {
 				interactive: modelData.enabled !== false
 				visible: modelData.visible !== false
 				checked: modelData.value === root.mode
+				writeAccessLevel: VenusOS.User_AccessType_User
 				text: root.showInverterModesOnly
 						? Global.inverterChargers.inverterModeToText(modelData.value)
 						: Global.inverterChargers.inverterChargerModeToText(modelData.value)

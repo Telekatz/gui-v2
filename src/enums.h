@@ -60,35 +60,29 @@ public:
 	};
 	Q_ENUM(StatusBar_RightButton)
 
-	enum SpinBox_FocusMode {
-		SpinBox_FocusMode_NoAction,
-		SpinBox_FocusMode_Navigate,
-		SpinBox_FocusMode_Edit
-	};
-	Q_ENUM(SpinBox_FocusMode)
-
 	enum Units_Type {
 		Units_None = 0,
-		Units_Volume_CubicMeter,
-		Units_Volume_Liter,
+		Units_Volume_CubicMetre,
+		Units_Volume_Litre,
 		Units_Volume_GallonImperial,
 		Units_Volume_GallonUS,
 		Units_Percentage,
 		Units_Volt_AC,
 		Units_Volt_DC,
 		Units_VoltAmpere,
+		Units_VoltAmpereReactive,
 		Units_Watt,
 		Units_Amp,
 		Units_Hertz,
 		Units_Energy_KiloWattHour,
 		Units_AmpHour,
-		Units_WattsPerSquareMeter,
+		Units_WattsPerSquareMetre,
 		Units_Temperature_Kelvin,
 		Units_Temperature_Celsius,
 		Units_Temperature_Fahrenheit,
 		Units_RevolutionsPerMinute,
 		Units_Speed_MetresPerSecond,
-		Units_Speed_KilometersPerHour,
+		Units_Speed_KilometresPerHour,
 		Units_Speed_MilesPerHour,
 		Units_Speed_Knots,
 		Units_Hectopascal,
@@ -98,8 +92,13 @@ public:
 		Units_Time_Day,
 		Units_Time_Hour,
 		Units_Time_Minute,
-		Units_Altitude_Meter,
-		Units_Altitude_Foot
+		Units_Time_Second,
+		Units_Altitude_Metre,
+		Units_Altitude_Foot,
+		Units_PartsPerMillion,
+		Units_MicrogramPerCubicMeter,
+		Units_Lux,
+		Units_NewtonMeter,
 	};
 	Q_ENUM(Units_Type)
 
@@ -133,10 +132,18 @@ public:
 		OverviewWidget_Type_Unknown,
 		OverviewWidget_Type_AcInputPriority,
 		OverviewWidget_Type_AcInputOther,
-		OverviewWidget_Type_DcGenerator,
+
+		// DC inputs
 		OverviewWidget_Type_Alternator,
+		OverviewWidget_Type_DcGenerator,
 		OverviewWidget_Type_FuelCell,
-		OverviewWidget_Type_Wind,
+		OverviewWidget_Type_GenericDcSource,
+		OverviewWidget_Type_AcCharger,
+		OverviewWidget_Type_DcCharger,
+		OverviewWidget_Type_WaterGenerator,
+		OverviewWidget_Type_ShaftGenerator,
+		OverviewWidget_Type_WindCharger,
+
 		OverviewWidget_Type_Solar,
 		OverviewWidget_Type_VeBusDevice,
 		OverviewWidget_Type_Battery,
@@ -195,18 +202,45 @@ public:
 	};
 	Q_ENUM(AcInputs_InputSource)
 
-	enum DcInputs_InputType {
-		DcInputs_InputType_AcCharger,
-		DcInputs_InputType_Alternator,
-		DcInputs_InputType_DcCharger,
-		DcInputs_InputType_DcGenerator,
-		DcInputs_InputType_DcSystem,
-		DcInputs_InputType_FuelCell,
-		DcInputs_InputType_ShaftGenerator,
-		DcInputs_InputType_WaterGenerator,
-		DcInputs_InputType_Wind
+	enum DcMeter_Type {
+		DcMeter_Type_AcCharger,
+		DcMeter_Type_Alternator,
+		DcMeter_Type_BilgePump,
+		DcMeter_Type_DcCharger,
+		DcMeter_Type_DcSystem,
+		DcMeter_Type_ElectricDrive,
+		DcMeter_Type_Fridge,
+		DcMeter_Type_FuelCell,
+		DcMeter_Type_GenericLoad,
+		DcMeter_Type_GenericMeter,
+		DcMeter_Type_GenericSource,
+		DcMeter_Type_Genset,
+		DcMeter_Type_Inverter,
+		DcMeter_Type_ShaftGenerator,
+		DcMeter_Type_SolarCharger,
+		DcMeter_Type_WaterGenerator,
+		DcMeter_Type_WaterHeater,
+		DcMeter_Type_WaterPump,
+		DcMeter_Type_WindCharger
 	};
-	Q_ENUM(DcInputs_InputType)
+	Q_ENUM(DcMeter_Type)
+
+	enum MonitorMode_Type {
+		MonitorMode_DcSource_Generic = -1,
+		MonitorMode_DcSource_AcCharger = -2,
+		MonitorMode_DcSource_DcCharger = -3,
+		MonitorMode_DcSource_WaterGenerator = -4,
+		MonitorMode_DcSource_ShaftGenerator = -7,
+		MonitorMode_DcSource_WindCharger = -8,
+		MonitorMode_DcLoad_Generic = 1,
+		MonitorMode_DcLoad_Fridge = 3,
+		MonitorMode_DcLoad_WaterPump = 4,
+		MonitorMode_DcLoad_BilgePump = 5,
+		MonitorMode_DcLoad_Inverter = 7,
+		MonitorMode_DcLoad_WaterHeater = 8,
+		MonitorMode_Unknown = 1000
+	};
+	Q_ENUM(MonitorMode_Type)
 
 	enum EnvironmentInput_Status {
 		EnvironmentInput_Status_Ok = 0,
@@ -245,6 +279,27 @@ public:
 		Battery_Balancer_Imbalance
 	};
 	Q_ENUM(Battery_Balancer_Status)
+
+	enum Battery_Status {
+		Battery_Status_Balanced = (1ul << 0),
+		Battery_Status_Imbalance = (1ul << 1),
+		Battery_Status_Balancing = (1ul << 2),
+		Battery_Status_Overvoltage = (1ul << 3),
+		Battery_Status_Undervoltage = (1ul << 4),
+		Battery_Status_Low_Temperature_ATC = (1ul << 5),
+		Battery_Status_High_Temperature_ATC = (1ul << 6),
+		Battery_Status_Cell_Error = (1ul << 7),
+		Battery_Status_High_Temperature_ATD = (1ul << 8),
+		Battery_Status_High_Cell_Voltage = (1ul << 9),
+		Battery_Status_Update_Failure = (1ul << 10),
+		Battery_Status_Charge_Overcurrent_Warning = (1ul << 11),
+		Battery_Status_Charge_Overcurrent_Alarm = (1ul << 12),
+		Battery_Status_Discharge_Overcurrent_Warning = (1ul << 13),
+		Battery_Status_Discharge_Overcurrent_Alarm = (1ul << 14),
+		Battery_Status_Low_Cell_Voltage = (1ul << 15),
+		Battery_Status_Low_Temperature_ATD = (1ul << 16)
+	};
+	Q_ENUM(Battery_Status)
 
 	enum Ess_State {
 		Ess_State_OptimizedWithBatteryLife,
@@ -476,26 +531,89 @@ public:
 	};
 	Q_ENUM(Switch_DeviceState)
 
+	enum GenericInput_Type {
+		GenericInput_Type_Discrete = 0,
+		GenericInput_Type_UnrangedValue = 1,
+		GenericInput_Type_RangedValue = 2,
+		GenericInput_Type_Temperature = 3,
+
+		// Update this value whenever new types are added.
+		GenericInput_Type_MaxSupportedType = GenericInput_Type_Temperature
+	};
+	Q_ENUM(GenericInput_Type)
+
+	enum GenericInput_Status {
+		GenericInput_Status_On = 0x00,
+		GenericInput_Status_Fault = 0x01,
+		GenericInput_Status_SensorBatteryLow = 0x02,
+	};
+	Q_ENUM(GenericInput_Status)
+
 	enum SwitchableOutput_Type {
-		SwitchableOutput_Type_Momentary = 0,
-		SwitchableOutput_Type_Latching,
+		SwitchableOutput_Type_Momentary,
+		SwitchableOutput_Type_Toggle,
 		SwitchableOutput_Type_Dimmable,
-		SwitchableOutput_Type_Slave = 5
+		SwitchableOutput_Type_TemperatureSetpoint,
+		SwitchableOutput_Type_SteppedSwitch,
+		SwitchableOutput_Type_Slave = 5,
+		SwitchableOutput_Type_Dropdown,
+		SwitchableOutput_Type_BasicSlider,
+		SwitchableOutput_Type_NumericInput,
+		SwitchableOutput_Type_ThreeStateSwitch,
+		SwitchableOutput_Type_BilgePump,
+		SwitchableOutput_Type_ColorDimmerRgb,
+		SwitchableOutput_Type_ColorDimmerCct,
+		SwitchableOutput_Type_ColorDimmerRgbW,
+
+		// Update this value whenever new types are added.
+		SwitchableOutput_Type_MaxSupportedType = SwitchableOutput_Type_ColorDimmerRgbW
 	};
 	Q_ENUM(SwitchableOutput_Type)
 
+	enum SwitchableOutput_Function {
+		SwitchableOutput_Function_Disabled = -1,
+		SwitchableOutput_Function_Alarm = 0,
+		SwitchableOutput_Function_GeneratorStartStop,
+		SwitchableOutput_Function_Manual,
+		SwitchableOutput_Function_Tank_Pump,
+		SwitchableOutput_Function_Temperature,
+		SwitchableOutput_Function_GensetHelperRelay,
+		SwitchableOutput_Function_OpportunityLoad,
+
+		SwitchableOutput_Function_MaxSupportedType = SwitchableOutput_Function_OpportunityLoad
+	};
+	Q_ENUM(SwitchableOutput_Function)
+
+
 	enum SwitchableOutput_Status {
-		SwitchableOutput_Status_Off,
-		SwitchableOutput_Status_Powered,
-		SwitchableOutput_Status_Tripped,
-		SwitchableOutput_Status_Over_Temperature = 0x04,
-		SwitchableOutput_Status_Output_Fault =0x08,
-		SwitchableOutput_Status_On = 0x09,  //inputActive + active
-		SwitchableOutput_Status_Short_Fault = 0x10,
-		SwitchableOutput_Status_Disabled = 0x20,
-		SwitchableOutput_Status_TripLowVoltage = 0x22
+		SwitchableOutput_Status_Off                 = 0x00,
+		SwitchableOutput_Status_Powered             = 0x01,
+		SwitchableOutput_Status_Tripped             = 0x02,
+		SwitchableOutput_Status_OverTemperature     = 0x04,
+		SwitchableOutput_Status_OverTemperature_Tripped = 0x06,
+		SwitchableOutput_Status_OutputFault         = 0x08,
+		SwitchableOutput_Status_On                  = 0x09, // inputActive + active
+		SwitchableOutput_Status_ShortFault          = 0x10,
+		SwitchableOutput_Status_Disabled            = 0x20,
+		SwitchableOutput_Status_Disabled_Tripped    = 0x22, // TripLowVoltage
+		SwitchableOutput_Status_Disabled_OverTemperature = 0x24,
+		SwitchableOutput_Status_Disabled_On         = 0x29, // user control disallowed, but on
+		SwitchableOutput_Status_Bypassed            = 0x40,
+		SwitchableOutput_Status_Bypassed_Tripped    = 0x42,
+		SwitchableOutput_Status_Bypassed_OverTemperature = 0x44,
+		SwitchableOutput_Status_ExternalControl     = 0x80,
+		SwitchableOutput_Status_ExternalControl_Tripped = 0x82,
+		SwitchableOutput_Status_ExternalControl_OverTemperature = 0x84
 	};
 	Q_ENUM(SwitchableOutput_Status)
+
+	enum IOChannel_ShowUI {
+		IOChannel_ShowUI_Off = 0x0,
+		IOChannel_ShowUI_Always = 0x1,
+		IOChannel_ShowUI_Local = 0x2,
+		IOChannel_ShowUI_Remote = 0x4,
+	};
+	Q_ENUM(IOChannel_ShowUI)
 
 	enum Notification_Type {
 		Notification_Warning,
@@ -521,7 +639,9 @@ public:
 		CanBusProfile_None250,
 		CanBusProfile_RvC,
 		CanBusProfile_HighVoltage,
-		CanBusProfile_None500
+		CanBusProfile_None500,
+		CanBusProfile_CanOpenMotordrive250,
+		CanBusProfile_CanOpenMotordrive500
 	};
 	Q_ENUM(CanBusProfile_Type)
 
@@ -538,16 +658,6 @@ public:
 		CanBusConfig_AnyBusAndHv
 	};
 	Q_ENUM(CanBusConfig_Type)
-
-	enum Relay_Function {
-		Relay_Function_Alarm = 0,
-		Relay_Function_GeneratorStartStop,
-		Relay_Function_Manual,
-		Relay_Function_Tank_Pump,
-		Relay_Function_Temperature,
-		Relay_Function_GensetHelperRelay
-	};
-	Q_ENUM(Relay_Function)
 
 	enum Temperature_DeviceType {
 		Temperature_DeviceType_Battery = 0,
@@ -589,6 +699,12 @@ public:
 	};
 	Q_ENUM(Vrm_PortalMode)
 
+	enum RemoteConsoleColorMode {
+		RemoteConsoleColorMode_FollowDisplayMode,
+		RemoteConsoleColorMode_FollowSystemTheme
+	};
+	Q_ENUM(RemoteConsoleColorMode)
+
 	enum DigitalInput_Type {
 		DigitalInput_Type_Disabled,
 		DigitalInput_Type_PulseMeter,
@@ -621,12 +737,21 @@ public:
 	};
 	Q_ENUM(DigitalInput_State)
 
+	// Latitude/Longitude string format, as saved to localsettings /Settings/Gps/Format.
 	enum GpsData_Format {
 		GpsData_Format_DegreesMinutesSeconds,
 		GpsData_Format_DecimalDegrees,
 		GpsData_Format_DegreesMinutes
 	};
 	Q_ENUM(GpsData_Format)
+
+	enum CardinalDirection {
+		CardinalDirection_North,
+		CardinalDirection_South,
+		CardinalDirection_East,
+		CardinalDirection_West,
+	};
+	Q_ENUM(CardinalDirection)
 
 	// These values are defined on the cerbo in /usr/sbin/resolv-watch script
 	// that monitors which connection is the one active from all the avaiable ones.
@@ -793,7 +918,9 @@ public:
 		StartPage_Type_Levels_Tanks,
 		StartPage_Type_Levels_Environment,
 		StartPage_Type_BatteryList,
-		StartPage_Type_Boat
+		StartPage_Type_Boat,
+		StartPage_Type_Notifications,
+		StartPage_Type_DeviceList,
 	};
 	Q_ENUM(StartPage_Type)
 
@@ -809,13 +936,28 @@ public:
 	};
 	Q_ENUM(ListLink_Mode)
 
+	enum ModificationChecks_Action {
+		ModificationChecks_Action_Idle,
+		ModificationChecks_Action_StartCheck,
+		ModificationChecks_Action_SystemHooksEnable,
+		ModificationChecks_Action_SystemHooksDisable
+	};
+	Q_ENUM(ModificationChecks_Action)
+
+	enum ModificationChecks_FsModifiedState {
+		ModificationChecks_FsModifiedState_Unknown  = -1,
+		ModificationChecks_FsModifiedState_Clean    = 0,
+		ModificationChecks_FsModifiedState_Modified = 1,
+	};
+	Q_ENUM(ModificationChecks_FsModifiedState)
+
 	enum ModificationChecks_SystemHooksState {
-		ModificationChecks_SystemHooksState_NonePresent      = 0,
-		ModificationChecks_SystemHooksState_RcLocalDisabled  = 1,
-		ModificationChecks_SystemHooksState_RcSLocalDisabled = 2,
-		ModificationChecks_SystemHooksState_RcLocal          = 4,
-		ModificationChecks_SystemHooksState_RcSLocal         = 8,
-		ModificationChecks_SystemHooksState_HookLoadedAtBoot = 16
+		ModificationChecks_SystemHooksState_NonePresent         = 0b00000,
+		ModificationChecks_SystemHooksState_RcLocalDisabled     = 0b00001,
+		ModificationChecks_SystemHooksState_RcSLocalDisabled    = 0b00010,
+		ModificationChecks_SystemHooksState_RcLocal             = 0b00100,
+		ModificationChecks_SystemHooksState_RcSLocal            = 0b01000,
+		ModificationChecks_SystemHooksState_HookLoadedAtStartup = 0b10000
 	};
 	Q_ENUM(ModificationChecks_SystemHooksState)
 
@@ -826,11 +968,82 @@ public:
 	};
 	Q_ENUM(MotorDriveGear)
 
+	enum TailscaleConnectState {
+		TailscaleConnectState_Initializing = 0,
+		TailscaleConnectState_Backend_Starting = 1,
+		TailscaleConnectState_Backend_Stopped = 2,
+		TailscaleConnectState_Connection_Failed = 3,
+		TailscaleConnectState_Stopped = 4,
+		TailscaleConnectState_Logged_Out = 5,
+		TailscaleConnectState_Wait_For_Response = 6,
+		TailscaleConnectState_Wait_For_Login = 7,
+		TailscaleConnectState_No_State = 8,
+		TailscaleConnectState_Connection_Ok = 100
+	};
+	Q_ENUM(TailscaleConnectState)
+
+	enum MicrogridMode {
+		MicrogridMode_GridForming = 0,
+		MicrogridMode_GridFollowing = 1,
+		MicrogridMode_HybridDroop = 3
+	};
+	Q_ENUM(MicrogridMode)
+
+	enum MicrogridExternalControl {
+		MicrogridExternalControl_Standalone = 0,
+		MicrogridExternalControl_EmsControl = 1,
+	};
+	Q_ENUM(MicrogridExternalControl)
+
+	enum MicrogridError {
+		MicrogridError_NoError = 0,
+		MicrogridError_OutOfSync = 1,
+		MicrogridError_WriteFailed = 2,
+		MicrogridError_FminGreaterThanFmax = 3,
+		MicrogridError_PminGreaterThanPmax = 4,
+		MicrogridError_UminGreaterThanUmax = 5,
+		MicrogridError_QminGreaterThanQmax = 6,
+		MicrogridError_Q0OutOfRange = 7,
+		MicrogridError_QMinOutOfRange = 8,
+		MicrogridError_QMaxOutOfRange = 9,
+		MicrogridError_UDroopOutOfRange = 10,
+		MicrogridError_U0OutOfRange = 11,
+		MicrogridError_P0OutOfRange = 12,
+		MicrogridError_PMinOutOfRange = 13,
+		MicrogridError_PMaxOutOfRange = 14,
+		MicrogridError_F0OutOfRange = 15,
+		MicrogridError_FDroopOutOfRange = 16,
+		MicrogridError_PfFpMismatch = 17,
+		MicrogridError_QuUqMismatch = 18,
+	};
+	Q_ENUM(MicrogridError)
+
+	enum ElectricalPowerDisplay {
+		ElectricalPowerDisplay_PreferWatts,
+		ElectricalPowerDisplay_PreferAmps,
+		ElectricalPowerDisplay_Mixed,
+	};
+	Q_ENUM(ElectricalPowerDisplay)
+
+	enum ElectricalQuantity_Source {
+		ElectricalQuantity_Source_Any,
+		ElectricalQuantity_Source_Ac,
+		ElectricalQuantity_Source_AcInputOnly,
+		ElectricalQuantity_Source_Dc,
+	};
+	Q_ENUM(ElectricalQuantity_Source)
+
 	Q_INVOKABLE QString battery_modeToText(Battery_Mode mode) const;
 	Q_INVOKABLE Battery_Mode battery_modeFromPower(qreal power) const;
 	Q_INVOKABLE QString battery_iconFromMode(Battery_Mode mode) const;
+	Q_INVOKABLE QString battery_statusToText(Battery_Status status) const;
 
-	Q_INVOKABLE QString dcInput_typeToText(DcInputs_InputType type) const;
+	Q_INVOKABLE QString cardinalDirectionToShortText(CardinalDirection direction) const;
+
+	Q_INVOKABLE DcMeter_Type dcMeter_type(const QString &serviceType, int monitorMode) const;
+	Q_INVOKABLE QString dcMeter_typeToText(DcMeter_Type type) const;
+	Q_INVOKABLE QString dcMeter_iconForType(DcMeter_Type type) const;
+	Q_INVOKABLE QString dcMeter_iconForMultipleTypes() const;
 
 	Q_INVOKABLE QString digitalInput_typeToText(DigitalInput_Type type) const;
 	Q_INVOKABLE QString digitalInput_stateToText(DigitalInput_State state) const;
@@ -840,8 +1053,18 @@ public:
 	Q_INVOKABLE QString solarCharger_stateToText(SolarCharger_State state) const;
 
 	Q_INVOKABLE QString switch_deviceStateToText(Switch_DeviceState value) const;
+	Q_INVOKABLE QString genericInput_typeToText(GenericInput_Type value) const;
+	Q_INVOKABLE QString genericInput_statusToText(GenericInput_Status value) const;
 	Q_INVOKABLE QString switchableOutput_typeToText(SwitchableOutput_Type value, const QString &channelId = QString()) const;
-	Q_INVOKABLE QString switchableOutput_statusToText(SwitchableOutput_Status value) const;
+	Q_INVOKABLE QString switchableOutput_functionToText(SwitchableOutput_Function value) const;
+	Q_INVOKABLE QString switchableOutput_statusToText(SwitchableOutput_Status value, SwitchableOutput_Type type) const;
+
+	Q_INVOKABLE QString microgridModeToText(MicrogridMode mode, MicrogridExternalControl control) const;
+	Q_INVOKABLE QString microgrid_errorToText(MicrogridError error) const;
+
+	Q_INVOKABLE QString tank_fluidTypeToText(Tank_Type type) const;
+
+	static Enums* create(QQmlEngine *engine = nullptr, QJSEngine *jsEngine = nullptr);
 };
 
 }

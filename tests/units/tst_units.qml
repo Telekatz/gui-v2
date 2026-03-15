@@ -81,15 +81,15 @@ TestCase {
 	}
 
 	function test_precisionZero() {
-		var units = [VenusOS.Units_Volume_Liter,
+		var units = [VenusOS.Units_Volume_Litre,
 					 VenusOS.Units_Volume_GallonImperial,
 					 VenusOS.Units_Volume_GallonUS,
 					 VenusOS.Units_Watt,
-					 VenusOS.Units_WattsPerSquareMeter,
+					 VenusOS.Units_WattsPerSquareMetre,
 					 VenusOS.Units_Temperature_Celsius,
 					 VenusOS.Units_Temperature_Fahrenheit,
 					 VenusOS.Units_Temperature_Kelvin,
-					 VenusOS.Units_Altitude_Meter,
+					 VenusOS.Units_Altitude_Metre,
 					 VenusOS.Units_Altitude_Foot,
 					 VenusOS.Units_RevolutionsPerMinute]
 
@@ -112,7 +112,8 @@ TestCase {
 			expect(unit, 1234, "1234", unitString)
 
 			if (Units.isScalingSupported(unit)) {
-				if (unit === VenusOS.Units_Volume_Liter) {
+				if (unit === VenusOS.Units_Volume_Litre
+						|| unit === VenusOS.Units_Altitude_Metre) {
 					expect(unit, 12345, "12", "k" + unitString)
 					expect(unit, 123456789, "123457", "k" + unitString)
 				} else {
@@ -212,8 +213,8 @@ TestCase {
 		expect(unit, 123456789012, "123.5", "TWh")
 	}
 
-	function test_volumeCubicMeter() {
-		const unit = VenusOS.Units_Volume_CubicMeter
+	function test_volumeCubicMetre() {
+		const unit = VenusOS.Units_Volume_CubicMetre
 
 		expect(unit, NaN, "--", "m³")
 		expect(unit, 0, "0.000", "m³")
@@ -269,7 +270,7 @@ TestCase {
 		compare(quantity.unit, "TWh")
 
 		// choose scale based on different anchor value
-		quantity = Units.getDisplayText(unit, 19567890123, -1, 123456789)
+		quantity = Units.getDisplayText(unit, 19567890123, -1, true, 123456789)
 		compare(quantity.number, "19568")
 		compare(quantity.unit, "GWh")
 	}
@@ -290,5 +291,107 @@ TestCase {
 
 		quantity = Units.getDisplayText(unit, 1.9612345, 4)
 		compare(quantity.number, "1.9612")
+	}
+
+	function test_unitNone() {
+		expect(VenusOS.Units_None, NaN, "--", "")
+		expect(VenusOS.Units_None, 123, "123", "")
+		expect(VenusOS.Units_None, 12345678, "12345678", "")
+	}
+
+	function test_partsPerMillion() {
+		const unit = VenusOS.Units_PartsPerMillion
+		const unitString = Units.defaultUnitString(unit)
+
+		expect(unit, NaN, "--", unitString)
+		expect(unit, 0, "0", unitString)
+		expect(unit, 400, "400", unitString)
+		expect(unit, 425, "425", unitString)
+		expect(unit, 1000, "1000", unitString)
+		expect(unit, 5000, "5000", unitString)
+		expect(unit, 40000, "40000", unitString)
+	}
+
+	function test_microgramPerCubicMeter() {
+		const unit = VenusOS.Units_MicrogramPerCubicMeter
+		const unitString = Units.defaultUnitString(unit)
+
+		expect(unit, NaN, "--", unitString)
+		expect(unit, 0, "0.0", unitString)
+		expect(unit, 0.4, "0.4", unitString)
+		expect(unit, 0.54, "0.5", unitString)
+		expect(unit, 0.55, "0.6", unitString)
+		expect(unit, 2.2, "2.2", unitString)
+		expect(unit, 10.5, "10.5", unitString)
+		expect(unit, 100, "100", unitString)
+		expect(unit, 250.7, "251", unitString)
+		expect(unit, 999.9, "1000", unitString)
+		expect(unit, 1000, "1000", unitString)
+	}
+
+	function test_lux() {
+		const unit = VenusOS.Units_Lux
+		const unitString = Units.defaultUnitString(unit)
+
+		expect(unit, NaN, "--", unitString)
+		expect(unit, 0, "0", unitString)
+		expect(unit, 1, "1", unitString)
+		expect(unit, 10, "10", unitString)
+		expect(unit, 100, "100", unitString)
+		expect(unit, 244, "244", unitString)
+		expect(unit, 1000, "1000", unitString)
+		expect(unit, 10472, "10472", unitString)
+		expect(unit, 13026.67, "13027", unitString)
+		expect(unit, 65535, "65535", unitString)
+		expect(unit, 144284, "144284", unitString)
+	}
+
+	function test_coordinate_data() {
+		// Note: directions are not translated in the tests, so the qtTrId translation ids are used
+		// directly here.
+		return [
+			{
+				latitude: {
+					input: 52.372778,
+					dms: "52° 22' 22.0\" cardinalDirection_short_north",
+					dm: "52° 22.3667 cardinalDirection_short_north",
+					dd: "52.372778",
+				},
+				longitude: {
+					input: 4.893611,
+					dms: "4° 53' 37.0\" cardinalDirection_short_east",
+					dm: "4° 53.6167 cardinalDirection_short_east",
+					dd: "4.893611",
+				},
+			},
+			{
+				latitude: {
+					input: -27.911111,
+					dms: "27° 54' 40.0\" cardinalDirection_short_south",
+					dm: "27° 54.6667 cardinalDirection_short_south",
+					dd: "-27.911111",
+				},
+				longitude: {
+					input: -43.205556,
+					dms: "43° 12' 20.0\" cardinalDirection_short_west",
+					dm: "43° 12.3334 cardinalDirection_short_west",
+					dd: "-43.205556",
+				},
+			},
+		]
+	}
+
+	function test_coordinate(data) {
+		// Degrees, minutes, seconds
+		compare(Units.formatLatitude(data.latitude.input, VenusOS.GpsData_Format_DegreesMinutesSeconds), data.latitude.dms)
+		compare(Units.formatLongitude(data.longitude.input, VenusOS.GpsData_Format_DegreesMinutesSeconds), data.longitude.dms)
+
+		// Decimal degrees
+		compare(Units.formatLatitude(data.latitude.input, VenusOS.GpsData_Format_DecimalDegrees), data.latitude.dd)
+		compare(Units.formatLongitude(data.longitude.input, VenusOS.GpsData_Format_DecimalDegrees), data.longitude.dd)
+
+		// Degrees, decimal minutes
+		compare(Units.formatLatitude(data.latitude.input, VenusOS.GpsData_Format_DegreesMinutes), data.latitude.dm)
+		compare(Units.formatLongitude(data.longitude.input, VenusOS.GpsData_Format_DegreesMinutes), data.longitude.dm)
 	}
 }

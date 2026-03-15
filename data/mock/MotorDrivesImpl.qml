@@ -6,53 +6,88 @@
 import QtQuick
 import Victron.VenusOS
 
-QtObject {
+Item {
 	id: root
 
-	property int mockDeviceCount
+	readonly property string motorDriveUid: motorDriveServices.firstUid
 
-	function populate() {
-		const deviceInstanceNum = mockDeviceCount++
-		motorDriveComponent.createObject(root, {
-			serviceUid: "mock/com.victronenergy.motordrive.ttyUSB" + deviceInstanceNum,
-			deviceInstance: deviceInstanceNum,
-		})
+	function setSystemValue(path, value) {
+		MockManager.setValue("com.victronenergy.system" + path, value)
 	}
 
-	property Component motorDriveComponent: Component {
-		Device {
-			property int gear: VenusOS.MotorDriveGear_Forward
-			property Timer t: Timer {
-				interval: 1000
-				running: Global.mockDataSimulator.timersActive
-				repeat: true
-				onTriggered: {
-					if (++gear > VenusOS.MotorDriveGear_Forward) {
-						gear = VenusOS.MotorDriveGear_Neutral
-					}
+	FilteredServiceModel {
+		id: motorDriveServices
+		serviceTypes: ["motordrive"]
+	}
 
-					Global.mockDataSimulator.setMockValue(serviceUid + "/Motor/RPM", Math.floor(Math.random() * 4000))
+	VeQuickItem {
+		id: gaugesAutoMax
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/AutoMax"
+	}
 
-					power.setValue(Math.floor(Math.random() * 12345))
-					Global.mockDataSimulator.setMockValue(serviceUid + "/Motor/Direction", gear)
-					Global.mockDataSimulator.setMockValue(serviceUid + "/Motor/Temperature", Math.floor(Math.random() * 100))
-					Global.mockDataSimulator.setMockValue(serviceUid + "/Coolant/Temperature", Math.floor(Math.random() * 100))
-					Global.mockDataSimulator.setMockValue(serviceUid + "/Controller/Temperature", Math.floor(Math.random() * 100))
+	VeQuickItem {
+		id: maxMotorRpm
+		uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/MotorDrive/RPM/Max"
+	}
+
+	Loader {
+		active: root.motorDriveUid.length > 0
+		sourceComponent: Item {
+			// Set system /MotorDrive/Power to the power of the first motordrive on the system.
+			VeQuickItem {
+				uid: root.motorDriveUid + "/Dc/0/Power"
+				onValueChanged: {
+					root.setSystemValue("/MotorDrive/Power", value ?? 0)
+					root.setSystemValue("/MotorDrive/Current", value/100 ?? 0)
 				}
 			}
 
-			Component.onCompleted: {
-				_deviceInstance.setValue(deviceInstance)
-				_customName.setValue("Motor Drive %1".arg(deviceInstance))
+			VeQuickItem {
+				uid: root.motorDriveUid + "/DeviceInstance"
+				onValueChanged: {
+					root.setSystemValue("/MotorDrive/0/DeviceInstance", value ?? 0)
+				}
+			}
+
+			// Update the max value of the RPM gauge on the Boat page.
+			VeQuickItem {
+				uid: root.motorDriveUid + "/Motor/RPM"
+				onValueChanged: {
+					if (valid && gaugesAutoMax.value === 1) {
+						maxMotorRpm.setValue(Math.max(value, maxMotorRpm.value || 0))
+					}
+				}
+			}
+
+			// Animate motordrive values.
+			MockDataRandomizer {
+				active: Global.mainView && Global.mainView.mainViewVisible
+				VeQuickItem { uid: root.motorDriveUid + "/Dc/0/Voltage" }
+				VeQuickItem { uid: root.motorDriveUid + "/Dc/0/Current" }
+				VeQuickItem { uid: root.motorDriveUid + "/Dc/0/Temperature" }
+				VeQuickItem { uid: root.motorDriveUid + "/Motor/Temperature" }
+				VeQuickItem { uid: root.motorDriveUid + "/Coolant/Temperature" }
+				VeQuickItem { uid: root.motorDriveUid + "/Controller/Temperature" }
+				VeQuickItem { uid: root.motorDriveUid + "/Motor/Torque" }
+			}
+			MockDataRangeAnimator {
+				active: Global.mainView && Global.mainView.mainViewVisible
+				stepSize: -876 // use a step size that looks uneven
+				maximumValue: MockManager.value(Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/MotorDrive/RPM/Max") || 0
+				VeQuickItem { uid: root.motorDriveUid + "/Motor/RPM" }
+			}
+			MockDataRangeAnimator {
+				active: Global.mainView && Global.mainView.mainViewVisible
+				maximumValue: VenusOS.MotorDriveGear_Forward
+				VeQuickItem { uid: root.motorDriveUid + "/Motor/Direction" }
+			}
+			MockDataRangeAnimator {
+				active: Global.mainView && Global.mainView.mainViewVisible
+				minimumValue: -1000
+				maximumValue: 2000
+				stepSize: 500
+				VeQuickItem { uid: root.motorDriveUid + "/Dc/0/Power" }
 			}
 		}
-	}
-
-	readonly property VeQuickItem power: VeQuickItem {
-		uid: BackendConnection.serviceUidForType("system") + "/MotorDrive/Power"
-	}
-
-	Component.onCompleted: {
-		populate()
 	}
 }

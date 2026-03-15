@@ -38,6 +38,7 @@ class Units : public QObject
 	QML_ELEMENT
 	QML_SINGLETON
 	Q_PROPERTY(QString numberFormattingLocaleName READ numberFormattingLocaleName CONSTANT FINAL)
+	Q_PROPERTY(QString degreesSymbol READ degreesSymbol CONSTANT FINAL)
 
 public:
 	enum FormatHint {
@@ -52,8 +53,12 @@ public:
 	static QObject* instance(QQmlEngine *engine, QJSEngine *);
 
 	QString numberFormattingLocaleName() const;
+	QString degreesSymbol() const;
+
 	Q_INVOKABLE QString formatNumber(qreal number, int precision = 0) const;
 	Q_INVOKABLE qreal formattedNumberToReal(const QString &s) const;
+	Q_INVOKABLE QString formatLatitude(qreal latitude, VenusOS::Enums::GpsData_Format format) const;
+	Q_INVOKABLE QString formatLongitude(qreal longitude, VenusOS::Enums::GpsData_Format format) const;
 
 	Q_INVOKABLE int defaultUnitPrecision(VenusOS::Enums::Units_Type unit) const;
 	Q_INVOKABLE QString defaultUnitString(VenusOS::Enums::Units_Type unit, int formatHints = 0) const;
@@ -65,6 +70,7 @@ public:
 		VenusOS::Enums::Units_Type unit,
 		qreal value,
 		int precision = -1,
+		bool precisionAdjustmentAllowed = true,
 		qreal unitMatchValue = qQNaN()) const;
 
 	quantityInfo getDisplayTextWithHysteresis(
@@ -72,13 +78,15 @@ public:
 		qreal value,
 		VenusOS::Enums::Units_Scale previousScale,
 		int precision = -1,
+		bool precisionAdjustmentAllowed = true,
 		qreal unitMatchValue = qQNaN(),
 		int formatHints = 0) const;
 
 	Q_INVOKABLE QString getCombinedDisplayText(
 		VenusOS::Enums::Units_Type unit,
 		qreal value,
-		int precision = -1) const;
+		int precision = -1,
+		bool precisionAdjustmentAllowed = true) const;
 
 	Q_INVOKABLE QString getCapacityDisplayText(VenusOS::Enums::Units_Type unit,
 		qreal capacity_m3,
@@ -92,15 +100,9 @@ public:
 
 	Q_INVOKABLE qreal sumRealNumbersList(const QList<qreal> &numbers) const;
 
-	Q_INVOKABLE qreal scaleNumber(qreal n, qreal fromMin, qreal fromMax, qreal toMin, qreal toMax) const {
-		const qreal fromRange = fromMax - fromMin;
-		const qreal toRange = toMax - toMin;
-		qreal normalized = qMax(fromMin, qMin(fromMax, n));
-		return qFuzzyIsNull(fromRange) ? 0.0 : ((((normalized - fromMin) / fromRange) * toRange) + toMin);
-	}
-
 private:
 	QString formatWindDirection(int degrees) const;
+	QString formatCoordinate(qreal coordinate, VenusOS::Enums::GpsData_Format format, VenusOS::Enums::CardinalDirection direction) const;
 };
 
 }

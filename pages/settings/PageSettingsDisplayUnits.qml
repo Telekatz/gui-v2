@@ -15,6 +15,7 @@ Page {
 		model: VisibleItemModel {
 			ListRadioButtonGroup {
 				text: CommonWords.temperature
+				writeAccessLevel: VenusOS.User_AccessType_User
 				optionModel: [
 					//% "Celsius"
 					{ display: qsTrId("settings_units_celsius"), value: VenusOS.Units_Temperature_Celsius },
@@ -29,7 +30,7 @@ Page {
 			}
 
 			ListVolumeUnitRadioButtonGroup {
-				//: Title for a list of units of volume (e.g. cubic meters, liters, gallons)
+				//: Title for a list of units of volume (e.g. cubic metres, litres, gallons)
 				//% "Volume"
 				text: qsTrId("components_volumeunit_volume")
 			}
@@ -37,22 +38,24 @@ Page {
 			ListRadioButtonGroup {
 				//% "Electrical power display"
 				text: qsTrId("settings_units_energy")
-
+				writeAccessLevel: VenusOS.User_AccessType_User
 				optionModel: [
 					//% "Power (Watts)"
-					{ display: qsTrId("settings_units_watts"), value: VenusOS.Units_Watt },
+					{ display: qsTrId("settings_units_watts"), value: VenusOS.ElectricalPowerDisplay_PreferWatts },
 					{
 						//% "Current (Amps)"
 						display: qsTrId("settings_units_amps"),
-						value: VenusOS.Units_Amp,
+						value: VenusOS.ElectricalPowerDisplay_PreferAmps,
 						//% "Note: If current cannot be displayed (for example, when showing a total for combined AC and DC sources) then power will be shown instead."
 						caption: qsTrId("settings_units_amps_exceptions"),
 					},
+					//% "Mixed (AC in Watts, DC in Amps)"
+					{ display: qsTrId("settings_units_mixed"), value: VenusOS.ElectricalPowerDisplay_Mixed },
 				]
-				currentIndex: Global.systemSettings.electricalQuantity === VenusOS.Units_Amp ? 1 : 0
+				currentIndex: Global.systemSettings.electricalPowerDisplay
 
 				onOptionClicked: function(index) {
-					Global.systemSettings.setElectricalQuantity(optionModel[index].value)
+					Global.systemSettings.setElectricalPowerDisplay(optionModel[index].value)
 				}
 			}
 
@@ -67,6 +70,7 @@ Page {
 				//% "Format"
 				text: qsTrId("settings_gps_format")
 				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gps/Format"
+				writeAccessLevel: VenusOS.User_AccessType_User
 				optionModel: [
 					//: Example of GPS data in the 'Degrees, Minutes, Seconds' format
 					//% "52° 20' 41.6\" N, 5° 13' 12.3\" E"
@@ -85,10 +89,11 @@ Page {
 				//% "Speed Unit"
 				text: qsTrId("settings_gps_speed_unit")
 				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Gps/SpeedUnit"
+				writeAccessLevel: VenusOS.User_AccessType_User
 				optionModel: [
-					//% "Kilometers per hour"
+					//% "Kilometres per hour"
 					{ display: qsTrId("settings_gps_format_kmh"), value: "km/h" },
-					//% "Meters per second"
+					//% "Metres per second"
 					{ display: qsTrId("settings_gps_format_ms"), value: "m/s" },
 					//% "Miles per hour"
 					{ display: qsTrId("settings_gps_format_mph"), value: "mph" },

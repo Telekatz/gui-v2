@@ -4,13 +4,13 @@
 */
 
 import QtQuick
-import QtQuick.Controls as C
-import QtQuick.Templates as CT
-import QtQuick.Controls.impl as CP
+import QtQuick.Templates as T
 import Victron.VenusOS
 
-CT.Switch {
+T.Switch {
 	id: root
+
+	property bool showEnabled: enabled
 
 	checkable: false
 	implicitWidth: Math.max(
@@ -39,7 +39,7 @@ CT.Switch {
 			height: Theme.geometry_switch_groove_height
 			radius: Theme.geometry_switch_indicator_width
 
-			color: root.enabled
+			color: root.showEnabled
 				   ? (root.checked ? Theme.color_switch_groove_on : Theme.color_switch_groove_off)
 				   : Theme.color_switch_groove_disabled
 			border.color: root.checked ? Theme.color_switch_groove_border_on
@@ -50,9 +50,9 @@ CT.Switch {
 
 	indicator: Image {
 		x: root.checked
-		   ? parent.width - width + Theme.geometry_switch_indicator_shadowOffset
-		   : parent.width - indicatorBackground.width - Theme.geometry_switch_indicator_shadowOffset
-		y: parent.height/2 - height/2
+		   ? root.background.width - width + Theme.geometry_switch_indicator_shadowOffset + root.leftInset
+		   : root.background.width - indicatorBackground.width - Theme.geometry_switch_indicator_shadowOffset + root.leftInset
+		y: root.topInset + root.background.height/2 - height/2
 		width: Theme.geometry_switch_indicator_width
 		height: Theme.geometry_switch_indicator_width
 		source: "qrc:/images/switch_indicator.png"
@@ -80,16 +80,11 @@ CT.Switch {
 		}
 	}
 
-	KeyNavigationHighlight {
-		anchors {
-			fill: parent
-			leftMargin: -Theme.geometry_listItem_flat_content_horizontalMargin
-			rightMargin: -Theme.geometry_listItem_flat_content_horizontalMargin
-			topMargin: -Theme.geometry_listItem_content_verticalMargin
-			bottomMargin: -Theme.geometry_listItem_content_verticalMargin
-		}
-		active: root.activeFocus
-	}
+	KeyNavigationHighlight.active: root.activeFocus
+	KeyNavigationHighlight.leftMargin: -Theme.geometry_listItem_flat_content_horizontalMargin
+	KeyNavigationHighlight.rightMargin: -Theme.geometry_listItem_flat_content_horizontalMargin
+	KeyNavigationHighlight.topMargin: -Theme.geometry_listItem_content_verticalMargin
+	KeyNavigationHighlight.bottomMargin: -Theme.geometry_listItem_content_verticalMargin
 
 	// Don't animate the value change when setting the value on initial load
 	Component.onCompleted: valueChangeBehavior.enabled = true

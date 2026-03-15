@@ -29,15 +29,15 @@ QtObject {
 		onValidChanged: if (valid) root._expandPhaseCount(3)
 		onValueChanged: root.phases.setValue(2, PhaseModel.PowerRole, value)
 	}
-	readonly property VeQuickItem _currentL1: VeQuickItem {
+	readonly property VeQuickItem currentL1: VeQuickItem {
 		uid: bindPrefix ? bindPrefix + "/L1/" + root.currentKey : ""
 		onValueChanged: root.phases.setValue(0, PhaseModel.CurrentRole, value)
 	}
-	readonly property VeQuickItem _currentL2: VeQuickItem {
+	readonly property VeQuickItem currentL2: VeQuickItem {
 		uid: bindPrefix ? bindPrefix + "/L2/" + root.currentKey : ""
 		onValueChanged: root.phases.setValue(1, PhaseModel.CurrentRole, value)
 	}
-	readonly property VeQuickItem _currentL3: VeQuickItem {
+	readonly property VeQuickItem currentL3: VeQuickItem {
 		uid: bindPrefix ? bindPrefix + "/L3/" + root.currentKey : ""
 		onValueChanged: root.phases.setValue(2, PhaseModel.CurrentRole, value)
 	}
@@ -50,10 +50,9 @@ QtObject {
 	readonly property bool hasPower: powerL1.valid || powerL2.valid || powerL3.valid
 	property real _power: NaN
 
+	readonly property bool singlePhaseCurrentValid: _phaseCount.value === 1 && currentL1.valid
 	// multi-phase systems don't have a total current
-	readonly property real current: _phaseCount.value === 1 && _currentL1.valid ? _currentL1.value : NaN
-
-	readonly property real preferredQuantity: Global.systemSettings.electricalQuantity === VenusOS.Units_Amp ? current : power
+	readonly property real current: singlePhaseCurrentValid && currentL1.value !== undefined ? currentL1.value : NaN
 
 	readonly property PhaseModel phases: PhaseModel {
 		id: _phases
@@ -66,7 +65,7 @@ QtObject {
 	// changes too often on system with more than one phase
 	readonly property Timer _totalPowerTimer: Timer {
 		interval: 1000
-		running: BackendConnection.applicationVisible && root.hasPower
+		running: root.hasPower && Global.timersEnabled
 		repeat: true
 		onTriggered: {
 			_power = (powerL1.value || 0) + (powerL2.value || 0) + (powerL3.value || 0)

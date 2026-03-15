@@ -16,8 +16,8 @@ Page {
 			ListNavigation {
 				//% "Ethernet"
 				text: qsTrId("pagesettingsconnectivity_ethernet")
-				secondaryText: networkServices.state !== "idle" && networkServices.state !== ""
-					? (networkServices.ipAddress ? networkServices.ipAddress : Utils.connmanServiceState(networkServices.state))
+				secondaryText: networkServices.networkState !== "idle" && networkServices.networkState !== ""
+					? (networkServices.ipAddress ? networkServices.ipAddress : Utils.connmanServiceState(networkServices.networkState))
 					//% "Unplugged"
 					: qsTrId("settings_tcpip_connection_unplugged")
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsEthernet.qml", {"title": text})
@@ -34,12 +34,12 @@ Page {
 			}
 
 			ListNavigation {
-				//% "Bluetooth"
-				text: qsTrId("pagesettingsconnectivity_bluetooth")
+				//% "Bluetooth (for VictronConnect App)"
+				text: qsTrId("pagesettingsconnectivity_bluetooth_for_victronconnect_app")
 				secondaryText: networkServices.hasBluetoothSupport
 					? (bluetooth.value === 1 ? CommonWords.enabled : CommonWords.disabled)
-					//% "No Bluetooth adapter connected"
-					: qsTrId("settings_bluetooth_not_available")
+					//% "No Bluetooth available"
+					: qsTrId("pagesettingsconnectivity_bluetooth_not_available")
 				onClicked: Global.pageManager.pushPage("/pages/settings/PageSettingsBluetooth.qml", {"title": text})
 
 				VeQuickItem {
@@ -62,21 +62,6 @@ Page {
 			}
 
 			SettingsListHeader { }
-
-			ListNavigation {
-				//% "Tailscale (remote VPN access)"
-				text: qsTrId("settings_services_tailscale_remote_vpn_access")
-				secondaryText: tailscale.value === 1 ? CommonWords.enabled : CommonWords.disabled
-				onClicked: {
-					Global.pageManager.pushPage("/pages/settings/PageSettingsTailscale.qml", { title: text })
-				}
-				preferredVisible: tailscale.valid
-
-				VeQuickItem {
-					id: tailscale
-					uid: Global.systemSettings.serviceUid + "/Settings/Services/Tailscale/Enabled"
-				}
-			}
 
 			SettingsColumn {
 				width: parent ? parent.width : 0

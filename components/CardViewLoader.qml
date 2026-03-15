@@ -12,15 +12,45 @@ Loader {
 	required property Item statusBarItem
 	required property Item navBarItem
 	required property Item swipeViewItem
+	required property bool animationEnabled
 	property color backgroundColor: Theme.color_page_background
 	readonly property bool animationRunning: inAnimation.running || outAnimation.running
-	property int animationDuration: Theme.animation_controlCards_slide_duration
 	property bool viewActive: false
+	property real yOffset
+
+	readonly property int _animationDuration: animationEnabled ? Theme.animation_controlCards_slide_duration : 1
+
+	function setYOffset(offset, animate) {
+		yOffset = offset
+		displaceTransition.enabled = animate
+		state = "displaced"
+	}
+
+	function clearYOffset() {
+		yOffset = 0
+		displaceTransition.enabled = true
+		state = ""
+	}
 
 	active: viewActive
 	onActiveChanged: if (active) active = viewActive // remove binding
 	opacity: 0.0
 	enabled: viewActive || outAnimation.running
+
+	states: State {
+		name: "displaced"
+		PropertyChanges {
+			target: cardsLoader
+			y: cardsLoader.yOffset
+		}
+	}
+	transitions: Transition {
+		id: displaceTransition
+		YAnimator {
+			duration: Theme.animation_inputPanel_slide_duration
+			easing.type: Easing.InOutQuad
+		}
+	}
 
 	SequentialAnimation {
 		id: inAnimation
@@ -31,28 +61,28 @@ Loader {
 				target: root
 				from: root.statusBarItem.height - Theme.geometry_controlCards_slide_distance
 				to: root.statusBarItem.height
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.OutSine
 			}
 			OpacityAnimator {
 				target: root
 				from: 0.0
 				to: 1.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.OutSine
 			}
 			OpacityAnimator {
 				target: root.swipeViewItem
 				from: 1.0
 				to: 0.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.OutSine
 			}
 			OpacityAnimator {
 				target: root.navBarItem
 				from: 1.0
 				to: 0.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.OutSine
 			}
 			ColorAnimation {
@@ -60,7 +90,7 @@ Loader {
 				property: "backgroundColor"
 				from: root.backgroundColor
 				to: Theme.color_page_background
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.OutSine
 			}
 		}
@@ -75,28 +105,28 @@ Loader {
 				target: root
 				from: root.statusBarItem.height
 				to: root.statusBarItem.height - Theme.geometry_controlCards_slide_distance
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.InSine
 			}
 			OpacityAnimator {
 				target: root
 				from: 1.0
 				to: 0.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.InSine
 			}
 			OpacityAnimator {
 				target: root.swipeViewItem
 				from: 0.0
 				to: 1.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.InSine
 			}
 			OpacityAnimator {
 				target: root.navBarItem
 				from: 0.0
 				to: 1.0
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.InSine
 			}
 			ColorAnimation {
@@ -104,7 +134,7 @@ Loader {
 				property: "backgroundColor"
 				from: Theme.color_page_background
 				to: root.backgroundColor
-				duration: root.animationDuration
+				duration: root._animationDuration
 				easing.type: Easing.InSine
 			}
 			PropertyAction {

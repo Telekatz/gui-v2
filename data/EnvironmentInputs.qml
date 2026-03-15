@@ -9,8 +9,8 @@ import Victron.VenusOS
 QtObject {
 	id: root
 
-	property DeviceModel model: DeviceModel {
-		modelId: "environmentInputs"
+	readonly property FilteredDeviceModel model: FilteredDeviceModel {
+		serviceTypes: ["temperature"]
 	}
 
 	readonly property ListModel _temperatureDetails: ListModel {
@@ -58,18 +58,6 @@ QtObject {
 		}
 	}
 
-	function addInput(input) {
-		model.addDevice(input)
-	}
-
-	function removeInput(input) {
-		model.removeDevice(input.serviceUid)
-	}
-
-	function reset() {
-		model.clear()
-	}
-
 	function temperatureTypeToText(temperatureType) {
 		return _validTemperatureType(temperatureType)
 				? qsTrId(_temperatureDetails.get(temperatureType).description)
@@ -78,15 +66,17 @@ QtObject {
 	}
 
 	function temperatureGaugeMinimum(temperatureType) {
-		return _validTemperatureType(temperatureType)
+		const temp = _validTemperatureType(temperatureType)
 				? (_temperatureDetails.get(temperatureType).temperatureGaugeMinimum)
 				: (_temperatureDetails.get(VenusOS.Temperature_DeviceType_Generic).temperatureGaugeMinimum)
+		return Units.convert(temp, VenusOS.Units_Temperature_Celsius, Global.systemSettings.temperatureUnit)
 	}
 
 	function temperatureGaugeMaximum(temperatureType) {
-		return _validTemperatureType(temperatureType)
+		const temp = _validTemperatureType(temperatureType)
 				? (_temperatureDetails.get(temperatureType).temperatureGaugeMaximum)
 				: (_temperatureDetails.get(VenusOS.Temperature_DeviceType_Generic).temperatureGaugeMaximum)
+		return Units.convert(temp, VenusOS.Units_Temperature_Celsius, Global.systemSettings.temperatureUnit)
 	}
 
 	function temperatureGaugeStepSize(temperatureType) {

@@ -4,7 +4,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
 ListItem {
@@ -13,17 +12,38 @@ ListItem {
 	readonly property alias button: button
 	property alias secondaryText: button.text
 
+	// If true, displays a text label instead of a button.
+	property bool readOnly: false
+
 	interactive: true
+	pressAreaEnabled: false
 
 	content.children: [
 		ListItemButton {
 			id: button
 
-			down: pressed || checked || root.down
-			width: Math.min(implicitWidth, root.maximumContentWidth)
-			enabled: root.clickable
+			// TODO increase the button press area (see #2768). Can do this more easily without
+			// affecting the content geometry, when ListItem is changed to be a Control, and this
+			// type can implement its own layout.
 
-			onClicked: root.clicked()
+			down: root.clickable && (pressed || checked || root.down)
+			width: Math.min(implicitWidth, root.maximumContentWidth)
+			showEnabled: root.clickable
+			focusPolicy: Qt.NoFocus
+			visible: !root.readOnly
+
+			onClicked: {
+				if (!root.checkWriteAccessLevel() || !root.clickable) {
+					return
+				}
+				root.clicked()
+			}
+		},
+
+		SecondaryListLabel {
+			text: button.text
+			width: Math.min(implicitWidth, root.maximumContentWidth)
+			visible: !button.visible
 		}
 	]
 }

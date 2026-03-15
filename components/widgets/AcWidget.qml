@@ -24,6 +24,7 @@ OverviewWidget {
 		}
 	}
 
+	quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Ac
 	quantityLabel.visible: !!quantityLabel.dataObject
 	preferredSize: phaseCount > 1 ? VenusOS.OverviewWidget_PreferredSize_PreferLarge : VenusOS.OverviewWidget_PreferredSize_Any
 
@@ -58,7 +59,9 @@ OverviewWidget {
 				when: root.size === VenusOS.OverviewWidget_Size_S
 				PropertyChanges {
 					target: root.quantityLabel
-					font.pixelSize: Theme.font_overviewPage_widget_quantityLabel_smallSizeWithExtraContent
+					font.pixelSize: extraContentLoader.status === Loader.Ready
+						? Theme.font_overviewPage_widget_quantityLabel_smallSizeWithExtraContent // allow space for 3-phase metrics
+						: Theme.font_overviewPage_widget_quantityLabel_maximumSize
 				}
 				PropertyChanges {
 					target: extraContentLoader
@@ -98,7 +101,10 @@ OverviewWidget {
 				id: deviceListView
 
 				header: QuantityGroupListHeader {
-					quantityTitleModel: [
+					width: parent.width
+					metricsFontSize: Theme.font_size_body2 // align columns with those in the delegate
+					rightPadding: Theme.geometry_listItem_content_horizontalMargin + Theme.geometry_icon_size_medium
+					model: [
 						{ text: CommonWords.power_watts, unit: VenusOS.Units_Watt },
 					]
 				}

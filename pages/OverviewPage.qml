@@ -34,32 +34,18 @@ SwipeViewPage {
 		VenusOS.OverviewWidget_Type_DcGenerator,
 		VenusOS.OverviewWidget_Type_Alternator,
 		VenusOS.OverviewWidget_Type_FuelCell,
-		VenusOS.OverviewWidget_Type_Wind
+		VenusOS.OverviewWidget_Type_GenericDcSource,
+		VenusOS.OverviewWidget_Type_AcCharger,
+		VenusOS.OverviewWidget_Type_DcCharger,
+		VenusOS.OverviewWidget_Type_WaterGenerator,
+		VenusOS.OverviewWidget_Type_ShaftGenerator,
+		VenusOS.OverviewWidget_Type_WindCharger,
 		// End bottom widgets
 	]
 
-	// Set a counter that updates whenever the layout should change.
-	// Use a delayed binding to avoid repopulating the model unnecessarily.
-	readonly property int _shouldResetWidgets: Global.dcInputs.model.count
-			+ Global.acInputs.activeInSource
-			+ (Global.acInputs.input1?.operational ? 1 : 0)
-			+ (Global.acInputs.input2?.operational ? 1 : 0)
-			+ (Global.system.showInputLoads ? 1 : 0)
-			+ (Global.system.hasAcOutSystem ? 1 : 0)
-			+ (Global.allDevicesModel.combinedDcLoadDevices.count > 0 || !isNaN(Global.system.dc.power) ? 1 : 0)
-			+ (Global.solarDevices.model.count === 0 ? 0 : 1)
-			+ (Global.evChargers.model.count === 0 ? 0 : 1)
-			+ Global.evChargers.acInputPositionCount
-			+ Global.evChargers.acOutputPositionCount
-			+ (Global.pvInverters.model.count === 0 ? 0 : 1)
-	on_ShouldResetWidgetsChanged: Qt.callLater(_resetWidgets)
-	Component.onCompleted: Qt.callLater(_resetWidgets)
-
 	property var _createdWidgets: ({})
-
 	property bool _expandLayout: !!Global.pageManager && Global.pageManager.expandLayout
 	property bool _animateGeometry: root.isCurrentPage && !!Global.pageManager && Global.pageManager.animatingIdleResize
-	property int _evcsChangeToken
 
 	// Resets the layout, setting the y pos and height for all overview widgets. This is done once
 	// imperatively, instead of using anchors or y/height bindings, so that widget connector path
@@ -90,8 +76,8 @@ SwipeViewPage {
 		resetWidgetConnectors(_rightWidgets)
 
 		// Set the key navigation bindings
-		resetWidgetKeyNavigation(_leftWidgets)
-		resetWidgetKeyNavigation(_centerWidgets)
+		resetWidgetKeyNavigation(_leftWidgets, _centerWidgets)
+		resetWidgetKeyNavigation(_centerWidgets, _rightWidgets)
 		resetWidgetKeyNavigation(_rightWidgets)
 	}
 
@@ -216,12 +202,36 @@ SwipeViewPage {
 		}
 	}
 
-	function resetWidgetKeyNavigation(widgets) {
-		for (let i = 0; i < widgets.length - 1; ++i) {
+	function resetWidgetKeyNavigation(widgets, nextWidgets) {
+		let i
+		for (i = 0; i < widgets.length - 1; ++i) {
 			if (widgets[i].acceptsKeyNavigation()) {
 				widgets[i].KeyNavigation.down = widgets[i + 1]
+				widgets[i].KeyNavigation.tab = widgets[i + 1]
 			} else {
 				widgets[i].KeyNavigation.down = null
+				widgets[i].KeyNavigation.tab = null
+			}
+		}
+
+		// Allow tab navigation from the last widget in this set to the first widget of the next.
+		if (nextWidgets) {
+			let lastFocusableWidget
+			for (i = widgets.length - 1; i >= 0; --i) {
+				if (widgets[i].acceptsKeyNavigation()) {
+					lastFocusableWidget = widgets[i]
+					break
+				}
+			}
+			if (lastFocusableWidget) {
+				let nextFocusableWidget = null
+				for (i = 0; i < nextWidgets.length - 1; ++i) {
+					if (nextWidgets[i].acceptsKeyNavigation()) {
+						nextFocusableWidget = nextWidgets[i]
+						break
+					}
+				}
+				lastFocusableWidget.KeyNavigation.tab = nextFocusableWidget // null if there is no next item
 			}
 		}
 	}
@@ -241,10 +251,15 @@ SwipeViewPage {
 		case VenusOS.OverviewWidget_Type_AcInputOther:
 			widget = acInputComponent.createObject(root, args)
 			break
-		case VenusOS.OverviewWidget_Type_Alternator:
 		case VenusOS.OverviewWidget_Type_DcGenerator:
+		case VenusOS.OverviewWidget_Type_Alternator:
 		case VenusOS.OverviewWidget_Type_FuelCell:
-		case VenusOS.OverviewWidget_Type_Wind:
+		case VenusOS.OverviewWidget_Type_GenericDcSource:
+		case VenusOS.OverviewWidget_Type_AcCharger:
+		case VenusOS.OverviewWidget_Type_DcCharger:
+		case VenusOS.OverviewWidget_Type_WaterGenerator:
+		case VenusOS.OverviewWidget_Type_ShaftGenerator:
+		case VenusOS.OverviewWidget_Type_WindCharger:
 			widget = dcInputComponent.createObject(root, args)
 			break
 		case VenusOS.OverviewWidget_Type_DcLoads:
@@ -291,46 +306,67 @@ SwipeViewPage {
 			}
 		}
 
-		// Add DC widgets. Only one widget is added per DC type, regardless of the number of inputs
-		// for that type.
-		let clearedWidgets = []
-		for (i = 0; i < Global.dcInputs.model.count; ++i) {
-			// Add the input to the DC widget
-			const dcInput = Global.dcInputs.model.deviceAt(i)
-			widgetType = _dcWidgetTypeForInputType(dcInput.inputType)
-			widget = _createWidget(widgetType)
-			if (clearedWidgets.indexOf(widget) < 0) {
-				// Ensure the layout starts with a clean list of inputs for this widget.
-				widget.inputs.clear()
-				clearedWidgets.push(widget)
-			}
-			widget.inputs.addDevice(dcInput)
-			if (widgetCandidates.indexOf(widget) < 0) {
-				// Only show one widget for each DC input type.
-				widgetCandidates.splice(_leftWidgetInsertionIndex(widgetType, widgetCandidates), 0, widget)
-			}
-		}
-
 		// Add solar widget
-		if (Global.solarDevices.model.count > 0 || Global.pvInverters.model.count > 0) {
+		if (Global.solarInputs.inputCount > 0) {
 			widgetCandidates.splice(_leftWidgetInsertionIndex(VenusOS.OverviewWidget_Type_Solar, widgetCandidates),
 					0, _createWidget(VenusOS.OverviewWidget_Type_Solar))
 		}
 		_leftWidgets = widgetCandidates
+
+		// Add DC widgets. Do this last so more boxes can be added per input type, if there is
+		// enough space to do so.
+		for (i = 0; i < Global.dcInputs.model.count; ++i) {
+			const dcInput = Global.dcInputs.model.deviceAt(i)
+			let dcMeterType = -1
+			if (widgetCandidates.length + Global.dcInputs.model.meterTypeCount <= 5) {
+				// If we can create one widget per meter type and still fit them into the left hand
+				// side, then do that. Otherwise, group them into the same dcsource box. (This is
+				// only relevant for dcsource service types; alternator/fuelcell/dcgenset always
+				// have their own boxes.)
+				dcMeterType = Global.dcInputs.model.meterTypeAt(i)
+			}
+
+			widgetType = _findDcWidgetType(dcInput.serviceType, dcMeterType)
+			if (widgetType < 0) {
+				console.warn("Cannot find matching widget type for DC input:", dcInput.serviceUid)
+				continue
+			}
+			widget = _createWidget(widgetType, { serviceType: dcInput.serviceType, inputTypeFilter: dcMeterType })
+			if (widgetCandidates.indexOf(widget) < 0) {
+				widgetCandidates.splice(_leftWidgetInsertionIndex(widgetType, widgetCandidates), 0, widget)
+			}
+		}
 	}
 
-	function _dcWidgetTypeForInputType(dcInputType) {
-		switch (dcInputType) {
-		case VenusOS.DcInputs_InputType_Alternator:
+	function _findDcWidgetType(serviceType, dcMeterType = -1) {
+		switch (serviceType) {
+		case "alternator":
 			return VenusOS.OverviewWidget_Type_Alternator
-		case VenusOS.DcInputs_InputType_FuelCell:
-			return VenusOS.OverviewWidget_Type_FuelCell
-		case VenusOS.DcInputs_InputType_Wind:
-			return VenusOS.OverviewWidget_Type_Wind
-		default:
-			// Use DC Generator as the catch-all type for any DC power source that isn't
-			// specifically handled.
+		case "dcgenset":
 			return VenusOS.OverviewWidget_Type_DcGenerator
+		case "fuelcell":
+			return VenusOS.OverviewWidget_Type_FuelCell
+		case "dcsource":
+			// If dcMeterType is set, return a specific widget for this meter type. Otherwise, group
+			// it together with other dcsource devices, into a "Generic source" box.
+			switch (dcMeterType) {
+			case VenusOS.DcMeter_Type_AcCharger:
+				return VenusOS.OverviewWidget_Type_AcCharger
+			case VenusOS.DcMeter_Type_DcCharger:
+				return VenusOS.OverviewWidget_Type_DcCharger
+			case VenusOS.DcMeter_Type_ShaftGenerator:
+				return VenusOS.OverviewWidget_Type_ShaftGenerator
+			case VenusOS.DcMeter_Type_WaterGenerator:
+				return VenusOS.OverviewWidget_Type_WaterGenerator
+			case VenusOS.DcMeter_Type_WindCharger:
+				return VenusOS.OverviewWidget_Type_WindCharger
+			default:
+				break
+			}
+			return VenusOS.OverviewWidget_Type_GenericDcSource
+		default:
+			console.warn("DC input service type was", serviceType, "which is not in Global.dcInputs.model!")
+			return -1
 		}
 	}
 
@@ -345,16 +381,19 @@ SwipeViewPage {
 	}
 
 	function _resetRightWidgets() {
-		let widgets = [acLoadsWidget]
+		let widgets = []
+		if (layoutConditions.showAcLoads) {
+			widgets.push(acLoadsWidget)
+		}
 		if (Global.evChargers.model.count > 0) {
 			widgets.push(_createWidget(VenusOS.OverviewWidget_Type_Evcs))
 		}
-		if (Global.system.showInputLoads && Global.system.hasAcOutSystem) {
+		if (layoutConditions.showEssentialLoads) {
 			widgets.push(essentialLoadsWidget)
 		} else {
 			essentialLoadsWidget.size = VenusOS.OverviewWidget_Size_Zero
 		}
-		if (Global.allDevicesModel.combinedDcLoadDevices.count > 0 || !isNaN(Global.system.dc.power)) {
+		if (layoutConditions.showDcLoads) {
 			widgets.push(_createWidget(VenusOS.OverviewWidget_Type_DcLoads))
 		}
 		_rightWidgets = widgets
@@ -389,8 +428,8 @@ SwipeViewPage {
 
 			// For AC inputs, positive power means energy is flowing towards inverter/charger,
 			// and negative power means energy is flowing towards the input.
-			return power > Theme.geometry_overviewPage_connector_animationPowerThreshold
-					? VenusOS.WidgetConnector_AnimationMode_StartToEnd
+			return Math.abs(power) < Theme.geometry_overviewPage_connector_animationPowerThreshold ? VenusOS.WidgetConnector_AnimationMode_NotAnimated
+					: power > 0.0 ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
 					: VenusOS.WidgetConnector_AnimationMode_EndToStart
 		} else if (connectorWidget.endWidget === batteryWidget) {
 			// For DC inputs, positive power means energy is flowing towards battery.
@@ -453,7 +492,7 @@ SwipeViewPage {
 	url: "qrc:/qt/qml/Victron/VenusOS/pages/OverviewPage.qml"
 	topLeftButton: VenusOS.StatusBar_LeftButton_ControlsInactive
 	fullScreenWhenIdle: true
-	activeFocusOnTab: true
+	focusPolicy: batteryWidget.enabled || inverterChargerWidget.enabled || acLoadsWidget.enabled || _leftWidgets.length > 0 ? Qt.TabFocus : Qt.NoFocus
 
 	onActiveFocusChanged: {
 		if (Global.keyNavigationEnabled
@@ -466,6 +505,53 @@ SwipeViewPage {
 				if (widget) {
 					widget.focus = true
 					break
+				}
+			}
+		}
+	}
+
+	// Update the layout whenever any of these conditions change.
+	// Ideally the left/right/centre areas would reorganize their layouts themselves, eventually.
+	QtObject {
+		id: layoutConditions
+
+		// Affects whether one or both AcInputWidgets are shown, and their widget sizes.
+		readonly property AcInput acInput1: Global.acInputs?.input1 ?? null
+		onAcInput1Changed: Qt.callLater(root._resetWidgets)
+		readonly property AcInput acInput2: Global.acInputs?.input2 ?? null
+		onAcInput2Changed: Qt.callLater(root._resetWidgets)
+
+		// Affects whether DcInputWidget(s) are shown.
+		readonly property bool showDcInputs: Global.dcInputs?.model.count ?? 0 > 0
+		onShowDcInputsChanged: Qt.callLater(root._resetWidgets)
+
+		// Affects whether SolarYieldWidget is shown, and its widget size.
+		readonly property int pvChargerCount: Global.solarInputs?.devices.count ?? 0
+		onPvChargerCountChanged: Qt.callLater(root._resetWidgets)
+		readonly property int pvInverterCount: Global.solarInputs?.pvInverterDevices.count ?? 0
+		onPvInverterCountChanged: Qt.callLater(root._resetWidgets)
+
+		// Affects whether AcLoadsWidget is shown.
+		readonly property bool showAcLoads: Global.system?.hasAcLoads || Global.evChargers?.model.count > 0
+		onShowAcLoadsChanged: Qt.callLater(root._resetWidgets)
+
+		// Affects whether DcLoadsWidget is shown.
+		readonly property bool showDcLoads: Global.system?.dc.hasPower
+		onShowDcLoadsChanged: Qt.callLater(root._resetWidgets)
+
+		// Affects whether EssentialLoadsWidget is shown.
+		readonly property bool showEssentialLoads: Global.system?.showInputLoads && Global.system?.hasAcOutSystem
+		onShowEssentialLoadsChanged: Qt.callLater(root._resetWidgets)
+
+		// Affects whether EvcsWidget is shown.
+		readonly property bool showEvChargers: Global.evChargers?.model.count ?? 0 > 0
+		onShowEvChargersChanged: Qt.callLater(root._resetWidgets)
+
+		readonly property Connections _dcMetersConn: Connections {
+			target: Global.dcInputs.model
+			function onDataChanged(topLeft, bottomRight, roles) {
+				if (roles.indexOf(DcMeterDeviceModel.MeterTypeRole) >= 0) {
+					Qt.callLater(root._resetWidgets)
 				}
 			}
 		}
@@ -519,6 +605,7 @@ SwipeViewPage {
 				endWidget: inverterChargerWidget
 				endLocation: VenusOS.WidgetConnector_Location_Left
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 				animationMode: root._inputConnectorAnimationMode(acInputWidgetConnector)
@@ -553,6 +640,7 @@ SwipeViewPage {
 				endWidget: batteryWidget
 				endLocation: VenusOS.WidgetConnector_Location_Left
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 				animationMode: root._inputConnectorAnimationMode(dcInputConnector)
@@ -571,7 +659,7 @@ SwipeViewPage {
 	FrameAnimation {
 		id: overviewPageRootAnimation
 
-		paused: cpuInfo.overLimit || Global.pauseElectronAnimations
+		paused: cpuInfo.overLimit
 		running: root.animationEnabled
 		property real previousElapsed
 
@@ -614,14 +702,14 @@ SwipeViewPage {
 				startLocation: VenusOS.WidgetConnector_Location_Right
 				endWidget: inverterChargerWidget
 				endLocation: VenusOS.WidgetConnector_Location_Left
-				visible: defaultVisible && Global.pvInverters.model.count > 0
+				visible: defaultVisible && !isNaN(Global.system.solar.acPower)
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 
 				// Energy flows to Inverter/Charger if there is any PV Inverter power (i.e. AC)
 				animationMode: root.isCurrentPage
-						&& !isNaN(Global.system.solar.acPower)
 						&& Math.abs(Global.system.solar.acPower || 0) > Theme.geometry_overviewPage_connector_animationPowerThreshold
 							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
 							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
@@ -634,14 +722,14 @@ SwipeViewPage {
 				startLocation: VenusOS.WidgetConnector_Location_Right
 				endWidget: batteryWidget
 				endLocation: VenusOS.WidgetConnector_Location_Left
-				visible: defaultVisible && Global.solarDevices.model.count > 0
+				visible: defaultVisible && !isNaN(Global.system.solar.dcPower)
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 
 				// Energy flows to battery if there is any PV Charger power (i.e. DC, so solar is charging battery)
 				animationMode: root.isCurrentPage
-						&& !isNaN(Global.system.solar.dcPower)
 						&& Math.abs(Global.system.solar.dcPower) > Theme.geometry_overviewPage_connector_animationPowerThreshold
 							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
 							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
@@ -666,7 +754,7 @@ SwipeViewPage {
 			id: inverterLeftConnectorAnchor
 			location: VenusOS.WidgetConnector_Location_Left
 			visible: Global.acInputs.findValidSource() !== VenusOS.AcInputs_InputSource_NotAvailable
-					|| Global.pvInverters.model.count > 0
+					|| !isNaN(Global.system.solar.acPower)
 		}
 		WidgetConnectorAnchor {
 			id: inverterToAcLoadsAnchor
@@ -689,6 +777,7 @@ SwipeViewPage {
 		endWidget: acLoadsWidget
 		endLocation: VenusOS.WidgetConnector_Location_Left
 		expanded: root._expandLayout
+		frameAnimation: overviewPageRootAnimation
 		animateGeometry: root._animateGeometry
 		animationEnabled: root.animationEnabled
 
@@ -708,6 +797,7 @@ SwipeViewPage {
 		endWidget: batteryWidget
 		endLocation: VenusOS.WidgetConnector_Location_Top
 		expanded: root._expandLayout
+		frameAnimation: overviewPageRootAnimation
 		animateGeometry: root._animateGeometry
 		animationEnabled: root.animationEnabled
 
@@ -734,7 +824,7 @@ SwipeViewPage {
 
 		WidgetConnectorAnchor {
 			location: VenusOS.WidgetConnector_Location_Left
-			visible: Global.dcInputs.model.count > 0 || Global.solarDevices.model.count > 0
+			visible: Global.dcInputs.model.count > 0 || Global.solarInputs.devices.count > 0
 		}
 		WidgetConnectorAnchor {
 			location: VenusOS.WidgetConnector_Location_Top
@@ -744,6 +834,7 @@ SwipeViewPage {
 	AcLoadsWidget {
 		id: acLoadsWidget
 
+		visible: Global.system.hasAcLoads || Global.evChargers.model.count > 0 // the EVCS widget might connect to the AC Loads widget
 		expanded: root._expandLayout
 		animateGeometry: root._animateGeometry
 		animationEnabled: root.animationEnabled
@@ -767,7 +858,11 @@ SwipeViewPage {
 			parent: inverterChargerWidget
 			location: VenusOS.WidgetConnector_Location_Right
 			visible: inverterToEssentialLoadsConnector.visible
-			offsetY: height + Theme.geometry_overviewPage_connector_anchor_spacing
+
+			// Use a fixed offsetY, not a dynamic one that could change after the connector path is
+			// already drawn; otherwise, if the offsetY changes after _resetWidgets() has already
+			// laid out the paths, then the path may start/end in the wrong position.
+			offsetY: Theme.geometry_overviewPage_connector_anchor_height + Theme.geometry_overviewPage_connector_anchor_spacing
 		}
 
 		WidgetConnectorAnchor {
@@ -784,6 +879,7 @@ SwipeViewPage {
 			endWidget: essentialLoadsWidget
 			endLocation: VenusOS.WidgetConnector_Location_Left
 			expanded: root._expandLayout
+			frameAnimation: overviewPageRootAnimation
 			animateGeometry: root._animateGeometry
 			animationEnabled: root.animationEnabled
 
@@ -829,6 +925,7 @@ SwipeViewPage {
 				endWidget: dcLoadsWidget
 				endLocation: VenusOS.WidgetConnector_Location_Left
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 
@@ -888,19 +985,19 @@ SwipeViewPage {
 				id: acLoadsToEvcsStartAnchor
 				parent: acLoadsWidget
 				location: VenusOS.WidgetConnector_Location_Left
-				offsetY: height + Theme.geometry_overviewPage_connector_anchor_spacing
-				visible: evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads
+				offsetY: Theme.geometry_overviewPage_connector_anchor_height + Theme.geometry_overviewPage_connector_anchor_spacing
+				visible: acLoadsWidget.visible && (evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads)
 			}
 			WidgetConnectorAnchor {
 				id: acLoadsToEvcsEndAnchor
 				location: VenusOS.WidgetConnector_Location_Left
-				offsetY: -(height + Theme.geometry_overviewPage_connector_anchor_spacing)
-				visible: evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads
+				offsetY: -(Theme.geometry_overviewPage_connector_anchor_height + Theme.geometry_overviewPage_connector_anchor_spacing)
+				visible: acLoadsWidget.visible && (evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads)
 			}
 			WidgetConnector {
 				id: acLoadsToEvcsConnector
 				parent: root
-				visible: evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads
+				visible: acLoadsWidget.visible && (evcsWidget.connectToCombinedAcLoads || evcsWidget.connectToSplitAcLoads)
 				startWidget: acLoadsWidget
 				startLocation: VenusOS.WidgetConnector_Location_Left
 				startOffsetY: acLoadsToEvcsStartAnchor.offsetY
@@ -909,6 +1006,7 @@ SwipeViewPage {
 				endOffsetY: acLoadsToEvcsEndAnchor.offsetY
 				midpointOffsetX: -evcsWidget.loadsConnectorsXDistance
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 				animationMode: root.isCurrentPage
@@ -923,13 +1021,13 @@ SwipeViewPage {
 				id: essentialLoadsToEvcsStartAnchor
 				parent: essentialLoadsWidget
 				location: VenusOS.WidgetConnector_Location_Left
-				offsetY: -(height + Theme.geometry_overviewPage_connector_anchor_spacing)
+				offsetY: -(Theme.geometry_overviewPage_connector_anchor_height + Theme.geometry_overviewPage_connector_anchor_spacing)
 				visible: evcsWidget.connectToEssentialLoads
 			}
 			WidgetConnectorAnchor {
 				id: essentialLoadsToEvcsEndAnchor
 				location: VenusOS.WidgetConnector_Location_Left
-				offsetY: height + Theme.geometry_overviewPage_connector_anchor_spacing
+				offsetY: Theme.geometry_overviewPage_connector_anchor_height + Theme.geometry_overviewPage_connector_anchor_spacing
 				visible: evcsWidget.connectToEssentialLoads
 			}
 			WidgetConnector {
@@ -944,6 +1042,7 @@ SwipeViewPage {
 				endOffsetY: essentialLoadsToEvcsEndAnchor.offsetY
 				midpointOffsetX: -evcsWidget.loadsConnectorsXDistance
 				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 				animationMode: root.isCurrentPage

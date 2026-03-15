@@ -25,7 +25,8 @@ OverviewWidget {
 	type: VenusOS.OverviewWidget_Type_Evcs
 	preferredSize: VenusOS.OverviewWidget_PreferredSize_LargeOnly
 	enabled: true
-	quantityLabel.dataObject: { "power": Global.evChargers.power, "current": Global.evChargers.current }
+	quantityLabel.sourceType: VenusOS.ElectricalQuantity_Source_Ac
+	quantityLabel.dataObject: Global.evChargers
 
 	extraContentChildren: [
 		Loader {
@@ -39,7 +40,7 @@ OverviewWidget {
 			}
 			active: root.size >= VenusOS.OverviewWidget_Size_M
 			sourceComponent: Global.evChargers.model.count > 1 ? multiEvChargerComponent
-					: Global.evChargers.model.count > 0 ? singleEvChargerComponent
+					: Global.evChargers.model.count > 0 && Global.evChargers.model.firstObject ? singleEvChargerComponent
 					: null
 		}
 	]
@@ -48,41 +49,67 @@ OverviewWidget {
 		id: singleEvChargerComponent
 
 		Column {
-			readonly property var evCharger: Global.evChargers.model.deviceAt(0)
+			id: singleCharger
+
+			readonly property string serviceUid: Global.evChargers.model.firstObject.serviceUid
 
 			width: parent.width
 
-			ElectricalQuantityLabel {
+			QuantityLabel {
 				height: chargingTimeLabel.height // use normal label height, instead of default baseline calculation
-				value: evCharger.energy
+				value: energyItem.value ?? NaN
 				valueColor: unitColor
 				alignment: Qt.AlignLeft
 				unit: VenusOS.Units_Energy_KiloWattHour
+
+				VeQuickItem {
+					id: energyItem
+					uid: singleCharger.serviceUid + "/Session/Energy"
+				}
 			}
 
 			Label {
 				width: parent.width
 				elide: Text.ElideRight
-				text: Global.evChargers.chargerStatusToText(evCharger.status)
+				text: Global.evChargers.chargerStatusToText(statusItem.value)
 				color: Theme.color_font_secondary
+				visible: statusItem.valid
+
+				VeQuickItem {
+					id: statusItem
+					uid: singleCharger.serviceUid + "/Status"
+				}
 			}
 
 			Row {
 				width: parent.width
+				height: chargingTimeLabel.height
 				spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin / 2
 
 				Label {
 					width: parent.width - chargingTimeLabel.width - parent.spacing
 					elide: Text.ElideRight
-					text: Global.evChargers.chargerModeToText(evCharger.mode)
+					text: Global.evChargers.chargerModeToText(modeItem.value)
 					color: Theme.color_font_secondary
+
+					VeQuickItem {
+						id: modeItem
+						uid: singleCharger.serviceUid + "/Mode"
+					}
 				}
 
 				FixedWidthLabel {
 					id: chargingTimeLabel
 
-					text: Utils.formatAsHHMM(evCharger.chargingTime, true)
+					text: chargingTimeItem.value >= 60 ? Utils.formatAsHHMM(chargingTimeItem.value, true) : Utils.formatAsHHMMSS(chargingTimeItem.value, true)
 					color: Theme.color_font_secondary
+					// do not show value under a second
+					visible: chargingTimeItem.value > 0
+
+					VeQuickItem {
+						id: chargingTimeItem
+						uid: singleCharger.serviceUid + "/Session/Time"
+					}
 				}
 			}
 		}

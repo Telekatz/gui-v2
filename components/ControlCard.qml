@@ -5,7 +5,6 @@
 
 import QtQuick
 import QtQuick.Controls.impl as CP
-import QtQuick.Controls as C
 import Victron.VenusOS
 
 BaseListItem {
@@ -15,7 +14,7 @@ BaseListItem {
 
 	implicitWidth: Theme.geometry_controlCard_maximumWidth
 	implicitHeight: parent ? parent.height : 0
-	navigationHighlight.visible: false
+	KeyNavigationHighlight.active: false
 
 	CP.ColorImage {
 		id: icon

@@ -89,6 +89,19 @@ void QuantityObject::setDefaultValue(const QVariant &value)
 	}
 }
 
+bool QuantityObject::hidden() const
+{
+	return m_hidden;
+}
+
+void QuantityObject::setHidden(bool hidden)
+{
+	if (m_hidden != hidden) {
+		m_hidden = hidden;
+		emit hiddenChanged();
+	}
+}
+
 qreal QuantityObject::numberValue() const
 {
 	const QVariant &v = m_value.isValid() ? m_value : m_defaultValue;
@@ -104,6 +117,24 @@ QString QuantityObject::textValue() const
 bool QuantityObject::hasValue() const
 {
 	return m_hasValue;
+}
+
+QColor QuantityObject::valueColor() const
+{
+	return m_valueColor;
+}
+
+void QuantityObject::setValueColor(const QColor &valueColor)
+{
+	if (m_valueColor != valueColor) {
+		m_valueColor = valueColor;
+		emit valueColorChanged();
+	}
+}
+
+void QuantityObject::resetValueColor()
+{
+	setValueColor(QColor());
 }
 
 void QuantityObject::connectNotifySignal()

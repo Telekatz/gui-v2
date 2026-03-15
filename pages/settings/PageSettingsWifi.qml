@@ -25,11 +25,17 @@ Page {
 		header: SettingsColumn {
 			width: parent.width
 
+			SettingsListHeader {
+				//% "Access point"
+				text: qsTrId("settings_wifi_access_point")
+			}
+
 			ListSwitch {
 				//% "Create access point"
 				text: qsTrId("settings_wifi_create_ap")
 				checked: accessPoint.value === 1
 				preferredVisible: accessPoint.valid
+				writeAccessLevel: VenusOS.User_AccessType_User
 				onClicked: {
 					if (checked) {
 						Global.dialogLayer.open(confirmApDialogComponent)
@@ -58,6 +64,37 @@ Page {
 						}
 					}
 				}
+			}
+
+			ListPasswordField {
+				//% "Access Point password"
+				text: qsTrId("settings_wifi_access_point_password")
+				writeAccessLevel: VenusOS.User_AccessType_User
+				preferredVisible: accessPoint.valid
+				echoMode: TextInput.Normal // password is shown on entry, but server will return it as obfuscated asterisks
+				dataItem.uid: Global.systemSettings.serviceUid + "/Settings/Services/AccessPointPassword"
+				validateInput: function() {
+					const length = textField.text.length
+					if ((length > 0 && length < 10) || length > 63) {
+						//% "Password length must be either 0 or between 10 and 63 characters long"
+						return Utils.validationResult(VenusOS.InputValidation_Result_Error, qsTrId("page_settings_wifi_invalid_password"))
+					}
+					//% "Password updated"
+					return Utils.validationResult(VenusOS.Notification_Info, qsTrId("page_settings_wifi_password_updated"))
+				}
+			}
+
+			SettingsListHeader {
+				text: CommonWords.settings
+			}
+
+			ListSwitch {
+				//% "Allow using WiFi for internet access"
+				text: qsTrId("settings_tcpip_wifi_gateway_enabled")
+				dataItem.uid: Global.venusPlatform.serviceUid + "/Network/Wifi/GatewayEnabled"
+				writeAccessLevel: VenusOS.User_AccessType_User
+				valueTrue: true
+				valueFalse: false
 			}
 
 			SettingsListHeader {
@@ -113,7 +150,7 @@ Page {
 	Timer {
 		id: scanTimer
 		interval: 10000
-		running: root.animationEnabled
+		running: Global.timersEnabled
 		repeat: true
 		triggeredOnStart: true
 		onTriggered: scanItem.setValue(1)

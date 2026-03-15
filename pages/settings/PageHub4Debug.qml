@@ -14,9 +14,9 @@ Page {
 	//% "Grid Setpoint"
 	title: qsTrId("settings_ess_debug_grid_setpoint")
 
-	ServiceDeviceModel {
+	FilteredDeviceModel {
 		id: batteryModel
-		serviceType: "battery"
+		serviceTypes: ["battery"]
 	}
 
 	GradientListView {
